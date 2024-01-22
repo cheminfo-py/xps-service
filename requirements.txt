@@ -9,4 +9,4 @@ fastapi_versioning
 wrapt_timeout_decorator
 requests
 ase
-#quippy-ase
+quippy-ase

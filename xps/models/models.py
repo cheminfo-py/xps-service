@@ -7,5 +7,8 @@ class XPS_prediction(BaseModel):
     
     intensities: List[float] = Field(None, description="List of intentsities")
 
+    sigma: float = Field(None, description= "Sigma used for Gaussians")
+    
+
 class XPS_BE(BaseModel):
     BE: List[float] = Field(None, description="List of binding energies in eV")

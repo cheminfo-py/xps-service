@@ -1,11 +1,11 @@
-from typing import Union
-
 from fastapi import FastAPI, HTTPException
+import logging
 
-from xps.models import XPS_prediction, XPS_BE
+from xps.models.models import XPS_prediction, XPS_BE
+from xps.predict.BE import smiles_to_BE
+from xps.predict.spectra import smiles_to_spectrum
 
-from xps.BE import smiles_to_BE
-
+logging.basicConfig(level=logging.INFO)
 
 
 app = FastAPI(
@@ -17,34 +17,42 @@ app = FastAPI(
 )
 
 
-@app.get("/xps", 
+@app.post("/spectrum", 
          response_model=XPS_prediction
          )
-def get_xps_spectra(smiles: str):
+def predict_xps_spectrum(smiles: str, sigma = 0.35):
     try:
+        sigma = float(sigma)
+        logging.info(f'Predicting spectrum of {smiles}')
+        energies, intensities = smiles_to_spectrum(smiles, sigma)
         xps = XPS_prediction(
-            energies=  [1,5],
-            intensities = [1,6]
+            energies=  list(energies),
+            intensities = list(intensities),
+            sigma = sigma
         )
-    except:
+    except Exception as e:
         raise HTTPException(
                 status_code=422,
-                detail="You need to provide either `molFile` or `smiles`",
+                detail=f"Error in predicting spectra({e})",
             )
     return xps
 
-@app.get("/BE", 
+
+
+@app.post("/BE", 
          response_model=XPS_BE
          )
-def get_BE(smiles: str):
+def predict_BE(smiles: str):
+    logging.info(f'getting binding ergies of {smiles}')
+
     try:
         binding_energies = smiles_to_BE(smiles)
         xps = XPS_BE(
-            BE = binding_energies
+            BE = list(binding_energies)
         )
-    except:
+    except Exception as e:
         raise HTTPException(
                 status_code=422,
-                detail="You need to provide either `molFile` or `smiles`",
+                detail=f"Error in predicting binding energies ({e})`",
             )
     return xps
