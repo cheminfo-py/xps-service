@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException
 import logging
 
-from xps.models.models import XPS_prediction, XPS_BE, SpectrumModel, SpectrumData, Spectrum
+from xps.models.models import XPS_prediction, XPS_BE, SpectrumModel, SpectrumData, Spectrum, MolfileRequest
 from xps.predict.BE import smiles_to_BE
-from xps.predict.spectra import smiles_to_spectrum
+from xps.predict.spectra import smiles_to_spectrum, molfile_to_spectrum
 
 logging.basicConfig(level=logging.INFO)
 
@@ -37,7 +37,8 @@ def predict_xps_spectrum(smiles: str, sigma = 0.35):
             )
     return xps
 
-@app.post("/v1/spectrum", 
+
+@app.post("/v1/SmilesToSpectrum", 
          response_model=SpectrumModel
          )
 def predict_xps_spectrum(smiles: str, sigma = 0.35):
@@ -62,6 +63,33 @@ def predict_xps_spectrum(smiles: str, sigma = 0.35):
             )
     return xps
 
+
+@app.post("/v1/MolfileToSpectrum", 
+         response_model=SpectrumModel
+         )
+def predict_xps_spectrum2(molfile:MolfileRequest, sigma = 0.35):
+    try:
+        molfile = molfile.molfile
+        sigma = float(sigma)
+        logging.info(f'Predicting spectrum of {molfile}')
+
+        energies, intensities = molfile_to_spectrum(molfile, sigma)
+
+        xps = SpectrumModel(spectrum = SpectrumData(
+            x = Spectrum(label = "Energies",
+                         data = list(energies),
+                         units = "eV"),
+            y = Spectrum(label = "Intensities",
+                         data= list(intensities),
+                         units = "Relative")),
+            sigma = sigma
+        )
+    except Exception as e:
+        raise HTTPException(
+                status_code=422,
+                detail=f"Error in predicting spectra({e})",
+            )
+    return xps
 
 
 @app.post("/v1/bindingEnergies", 

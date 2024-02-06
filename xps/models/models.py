@@ -6,6 +6,10 @@ class Spectrum(BaseModel):
     data: List[float] = Field(None, description="Data of axis")
     units: str = Field(None, description="Unit of axis")
 
+class MolfileRequest(BaseModel):
+    molfile: str
+
+
 class SpectrumData(BaseModel):
     x: Spectrum
     y: Spectrum

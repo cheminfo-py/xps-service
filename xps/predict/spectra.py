@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 
-from xps.predict.BE import smiles_to_BE
+from xps.predict.BE import smiles_to_BE, molfile_to_BE
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +24,13 @@ def get_gaussians(values, sigma, limit = 2):
     for val in values:
         gaussian += g(x,val,sigma)
     return x, gaussian
+
+
+def molfile_to_spectrum(molfile:str, sigma = 0.35, limit = 2):
+    binding_energies = molfile_to_BE(molfile)
+    logging.info(f'Binding Energies OK: n = {len(binding_energies)}')
+    BEs, intensities  = get_gaussians(binding_energies, sigma, limit = limit)
+    return BEs, intensities
 
 
 def smiles_to_spectrum(smiles, sigma = 0.35, limit =2):
