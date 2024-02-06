@@ -7,13 +7,8 @@ logging.basicConfig(level=logging.INFO)
 
 def get_gaussians(values, sigma, limit = 2):
     def g(BE_sweep, BE_max, sigma_):
-        logging.info(type(sigma_))
-        logging.info(type(sigma_))
-
         G = 1/(sigma_*np.sqrt(2*np.pi)) * np.exp(-(BE_sweep-BE_max)**2 / (2*sigma_**2))
         new_y= np.array(G)
-        logging.info('Creating gaussian')
-
         return new_y
 
     # Create a range of x values for the plot

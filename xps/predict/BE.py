@@ -10,21 +10,42 @@ import pickle
 import os
 
 MODEL = 'xps/MLmodels/XPS_GPR_C1s.pkl'
-Z = 6 # compute environment around atoms of a given Z. Here C atoms
-descriptor = Descriptor("soap atom_sigma=0.5 n_max=3 l_max=3 cutoff=3.0 Z={:d} n_species=3 species_Z='1 6 8'".format(Z))
 
+# First we create the descriptor object
 
-def xyz_to_soap(mol):
+Z = 6 
+cutoff = 5; dc = 0.5; sigma = 0.5
+zeta = 6
+SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
+               atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.} \
+               basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=2 central_weight={1. 1. 1.} \
+               compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma])),
+        "O": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
+               atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.} \
+               basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.} \
+               compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma]))}
+
+def xyz_to_soap_turbo(mol, element):
+    if element not in ['C', 'O']:
+        logging.info(f'Element "{element}" not implemented yet')
+        return []
+
+    desriptor =Descriptor(SOAP[element])
+
     elements = []
-    if ("C" in mol.symbols) == True:
-        descMol = descriptor.calc(mol) #descriptor for each molecule
+    if (element in mol.symbols) == True:
+        descMol = desriptor.calc(mol) #descriptor for each molecule
 
         if 'data' in descMol:
            desc_data = descMol['data'] #get the data from the descriptor object if exist
-           print(len(desc_data))
            for element in desc_data:
                elements.append(element)
-    return elements
+        return elements
+    
+    else:
+        logging.info(f'Element "{element}" not in molecule')
+        return []
+    
 
 def molfile_to_xyz(molfile:str):
     logging.info('molfile to xyz')
@@ -46,22 +67,32 @@ def smiles_to_xyz(smiles):
     molecule = read('temp.mol') # Read the temporary file into ASE Atoms object
     return molecule
 
-def soap_to_BE(soap):
-    model = pickle.load(open(MODEL, 'rb'))
+def soap_to_BE(soap, element):
+    model_file = f'xps/MLmodels/XPS_GPR_{element}1s.pkl'
+
+    model = pickle.load(open(model_file, 'rb'))
     logging.info('Model loaded')
 
     be = model.predict(soap)
     return be
 
 def molfile_to_BE(molfile:str):
+    bes = []
     mol = molfile_to_xyz(molfile)
-    soaps = xyz_to_soap(mol)
-    be = soap_to_BE(soaps)
-    return be
+    for element in ['C', 'O']:
+        logging.info(element)
+        soaps = xyz_to_soap_turbo(mol, element=element)
+        if soaps != []:
+            be = soap_to_BE(soaps, element)
+            logging.info(be)
+            for i in be:
+                bes.append(i)
+        
+    return bes
 
 def smiles_to_BE(smiles:str):
     mol = smiles_to_xyz(smiles)
-    soaps = xyz_to_soap(mol)
+    soaps = xyz_to_soap_turbo(mol, element= 'C')
     be = soap_to_BE(soaps)
     return be
 
