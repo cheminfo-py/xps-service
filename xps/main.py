@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 import logging
 
-from xps.models.models import XPS_prediction, XPS_BE
+from xps.models.models import XPS_prediction, XPS_BE, SpectrumModel, SpectrumData, Spectrum
 from xps.predict.BE import smiles_to_BE
 from xps.predict.spectra import smiles_to_spectrum
 
@@ -17,7 +17,7 @@ app = FastAPI(
 )
 
 
-@app.post("/spectrum", 
+@app.post("/v0/spectrum", 
          response_model=XPS_prediction
          )
 def predict_xps_spectrum(smiles: str, sigma = 0.35):
@@ -37,9 +37,34 @@ def predict_xps_spectrum(smiles: str, sigma = 0.35):
             )
     return xps
 
+@app.post("/v1/spectrum", 
+         response_model=SpectrumModel
+         )
+def predict_xps_spectrum(smiles: str, sigma = 0.35):
+    try:
+        sigma = float(sigma)
+        logging.info(f'Predicting spectrum of {smiles}')
+        energies, intensities = smiles_to_spectrum(smiles, sigma)
+
+        xps = SpectrumModel(spectrum = SpectrumData(
+            x = Spectrum(label = "Energies",
+                         data = list(energies),
+                         units = "eV"),
+            y = Spectrum(label = "Intensities",
+                         data= list(intensities),
+                         units = "Relative")),
+            sigma = sigma
+        )
+    except Exception as e:
+        raise HTTPException(
+                status_code=422,
+                detail=f"Error in predicting spectra({e})",
+            )
+    return xps
 
 
-@app.post("/BE", 
+
+@app.post("/v1/bindingEnergies", 
          response_model=XPS_BE
          )
 def predict_BE(smiles: str):
@@ -48,7 +73,9 @@ def predict_BE(smiles: str):
     try:
         binding_energies = smiles_to_BE(smiles)
         xps = XPS_BE(
-            BE = list(binding_energies)
+            BindingEnergies = Spectrum(label = "Intensities",
+                                       data = list(binding_energies),
+                                       units = "Relative")
         )
     except Exception as e:
         raise HTTPException(
