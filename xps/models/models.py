@@ -21,6 +21,7 @@ class SpectralData(BaseModel):
 
 class ModelPrediction(BaseModel):
     element: str
+    orbital: str
     #soapTurbo: soap
     prediction: bindingEnergyPrediction
 

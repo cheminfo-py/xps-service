@@ -24,9 +24,9 @@ SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f
                basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.} \
                compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma]))}
 
-def soap_to_BE(soap:soap, element:str) -> bindingEnergyPrediction:
+def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
     '''Searches for the relevant model and predict the binding energy for the given '''
-    model_file = f'xps/MLmodels/XPS_GPR_{element}1s.pkl'
+    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
 
     model = pickle.load(open(model_file, 'rb'))
     logging.info('Model loaded')
@@ -102,6 +102,21 @@ def fromMolfile(molfile:str, sigma = 0.35, limit = 2):
     )
 
 #####
+def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
+    '''Searches for the relevant model and predict the binding energy for the given element and orbital'''
+    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
+
+    model = pickle.load(open(model_file, 'rb'))
+    logging.info('Model loaded')
+
+    be, std = model.predict(soap, return_std = True)
+    logging.info(f'{len(be)} predictions')
+    return bindingEnergyPrediction(
+        modelFile = model_file,
+        data = list(be),
+        standardDeviation = list(std)
+    )
+
 def molfile_to_xyz(molfile:str):
     '''From molfile to ASE Atoms object'''
     
@@ -146,11 +161,13 @@ def molfile_to_BE(molfile:str) -> list:
     for element in ['C', 'O']:
         logging.info(element)
         if (element in mol.symbols):
+            orbital = '1s'
             soaps = xyz_to_soap_turbo(mol, element=element)
-            be = soap_to_BE(soaps.data, element)
+            be = soap_to_BE(soaps.data, element, orbital=orbital)
 
             model_prediction = ModelPrediction(
                 element = element,
+                orbital= orbital,
                 #soapTurbo = soaps,
                 prediction = be
             )
