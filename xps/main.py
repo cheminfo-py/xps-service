@@ -1,12 +1,10 @@
 from fastapi import FastAPI, HTTPException
 import logging
 
-from xps.models.models import XPS_prediction, XPS_BE
-from xps.predict.BE import smiles_to_BE
-from xps.predict.spectra import smiles_to_spectrum
+from xps.models.models import *
+from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms
 
 logging.basicConfig(level=logging.INFO)
-
 
 app = FastAPI(
     title="XPS webservice",
@@ -16,43 +14,57 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
-
-@app.post("/spectrum", 
-         response_model=XPS_prediction
+@app.post("test", 
          )
-def predict_xps_spectrum(smiles: str, sigma = 0.35):
+def test(test):
+    return test
+
+
+@app.post("/v1/fromMolfile", 
+         response_model=FullPrediction
+         )
+def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
+    logging.info(f'Request: {molfile.molfile}')
     try:
-        sigma = float(sigma)
-        logging.info(f'Predicting spectrum of {smiles}')
-        energies, intensities = smiles_to_spectrum(smiles, sigma)
-        xps = XPS_prediction(
-            energies=  list(energies),
-            intensities = list(intensities),
-            sigma = sigma
-        )
+        included, excluded = get_atoms(molfile.molfile)
+        be = molfile_to_BE(molfile.molfile)
+        pred_spectrum = be_to_spectrum(be, sigma=molfile.sigma)
+
     except Exception as e:
         raise HTTPException(
                 status_code=422,
-                detail=f"Error in predicting spectra({e})",
+                detail=f"Error in predicting spectra ({e})",
             )
-    return xps
+    return FullPrediction(
+        molfile = molfile.molfile,
+        elementsIncluded = included,
+        elementsExcluded = excluded,
+        bindingEnergies = be,
+        spectrum = pred_spectrum
+    )
 
 
-
-@app.post("/BE", 
-         response_model=XPS_BE
+@app.post("/v1/fromSMILES", 
+         response_model=FullPrediction
          )
-def predict_BE(smiles: str):
-    logging.info(f'getting binding ergies of {smiles}')
-
+def fromSMILES(smiles: SMILES, sigma = 0.35):
+    logging.info(f'Request: {smiles.smiles}')
     try:
-        binding_energies = smiles_to_BE(smiles)
-        xps = XPS_BE(
-            BE = list(binding_energies)
-        )
+        molfile = SMILES_to_molfile(smiles.smiles)
+        included, excluded = get_atoms(molfile.molfile)
+        be = molfile_to_BE(molfile.molfile)
+        pred_spectrum = be_to_spectrum(be, sigma=sigma)
+
     except Exception as e:
         raise HTTPException(
                 status_code=422,
-                detail=f"Error in predicting binding energies ({e})`",
+                detail=f"Error in predicting spectra ({e})",
             )
-    return xps
+    return FullPrediction(
+        molfile = molfile.molfile,
+        smiles= smiles.smiles,
+        elementsIncluded = included,
+        elementsExcluded = excluded,
+        bindingEnergies = be,
+        spectrum = pred_spectrum
+    )
