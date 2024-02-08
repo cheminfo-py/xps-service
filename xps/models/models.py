@@ -4,6 +4,9 @@ from typing import Dict, List, Optional
 class MolfileRequest(BaseModel):
     molfile:str
 
+class SMILES(BaseModel):
+    smiles:str
+
 class soap(BaseModel):
     element: str
     descriptor: str
@@ -30,12 +33,16 @@ class SpectrumData(BaseModel):
     y: SpectralData
     
 class PredictedXPSSpectrum(BaseModel):
-    bindingEnergies: List[float]
+    allBindingEnergies: List[float]
     gaussian: SpectrumData
     sigma: float = Field(None, description= "Sigma used for Gaussians")
 
 class FullPrediction(BaseModel):
     molfile: str
+    smiles: str = Field(None, description = "SMILES of structure (if given)")
+    elementsIncluded: List
+    elementsExcluded: List
     bindingEnergies: List
     spectrum: PredictedXPSSpectrum
+
 

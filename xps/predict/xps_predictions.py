@@ -10,9 +10,6 @@ import numpy as np
 
 from xps.models.models import *
 import os
-
-
-Z = 6 
 cutoff = 5; dc = 0.5; sigma = 0.5
 zeta = 6
 SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
@@ -24,25 +21,8 @@ SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f
                basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.} \
                compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma]))}
 
-def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
-    '''Searches for the relevant model and predict the binding energy for the given '''
-    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
 
-    model = pickle.load(open(model_file, 'rb'))
-    logging.info('Model loaded')
-
-    be, std = model.predict(soap, return_std = True)
-    logging.info(f'{len(be)} predictions')
-    return bindingEnergyPrediction(
-        modelFile = model_file,
-        data = list(be),
-        standardDeviation = list(std)
-    )
-
-
-
-
-def get_gaussians(values, sigma, limit = 2):
+def get_gaussians(values, sigma, limit = 2) -> SpectrumData:
     def g(BE_sweep, BE_max, sigma_):
         G = 1/(sigma_*np.sqrt(2*np.pi)) * np.exp(-(BE_sweep-BE_max)**2 / (2*sigma_**2))
         new_y= np.array(G)
@@ -58,7 +38,7 @@ def get_gaussians(values, sigma, limit = 2):
 
     return SpectrumData(
         x = SpectralData(
-            label = "Binding Enegies",
+            label = "Binding Energies",
             data = list(x),
             units = 'eV'
         ),
@@ -69,39 +49,24 @@ def get_gaussians(values, sigma, limit = 2):
         )
     )
 
-def get_all_BEs(predictions: ModelPrediction):
+def get_all_BEs(predictions: ModelPrediction) -> list:
     all_BE = []
     for pred in predictions:
         for be in pred.prediction.data:
             all_BE.append(be)
     return all_BE
 
-def be_to_spectrum(be:bindingEnergyPrediction,sigma= 0.35, limit = 2):
+def be_to_spectrum(be:bindingEnergyPrediction,sigma= 0.35, limit = 2) -> PredictedXPSSpectrum:
     all_BEs = get_all_BEs(be)
 
     spectra_gauss  = get_gaussians(all_BEs, sigma, limit = limit)
 
     return PredictedXPSSpectrum(
-        bindingEnergies = all_BEs,
+        allBindingEnergies = all_BEs,
         gaussian = spectra_gauss,
         sigma = sigma
     )
 
-def fromMolfile(molfile:str, sigma = 0.35, limit = 2):
-    binding_energies = molfile_to_BE(molfile)
-    logging.info(f'Binding Energies OK: n = {len(binding_energies)}')
-    all_BEs = get_all_BEs(binding_energies)
-
-    print(all_BEs)
-    spectra_gauss  = get_gaussians(all_BEs, sigma, limit = limit)
-
-    return PredictedXPSSpectrum(
-        bindingEnergies = all_BEs,
-        spectrum = spectra_gauss,
-        sigma = sigma
-    )
-
-#####
 def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
     '''Searches for the relevant model and predict the binding energy for the given element and orbital'''
     model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
@@ -179,3 +144,15 @@ def molfile_to_BE(molfile:str) -> list:
     return be_predictions
 
     
+def SMILES_to_molfile(smiles:str) -> MolfileRequest:
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol)
+    Chem.MolToMolFile(mol, 'temp.mol')    # Write RDKit molecule to a temporary file
+    with open('temp.mol', 'r+') as f:
+        content = f.readlines()
+    content = ''.join(content)
+
+    return MolfileRequest(
+        molfile = content
+    )
