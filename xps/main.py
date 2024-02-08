@@ -6,8 +6,6 @@ from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to
 
 logging.basicConfig(level=logging.INFO)
 
-MODEL_ELEMENTS = ['C', 'O']
-
 app = FastAPI(
     title="XPS webservice",
     description="Offers xps predictions.",
