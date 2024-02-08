@@ -1,9 +1,8 @@
 from fastapi import FastAPI, HTTPException
 import logging
 
-from xps.models.models import XPS_prediction, XPS_BE, SpectrumModel, SpectrumData, Spectrum, MolfileRequest
-from xps.predict.BE import smiles_to_BE
-from xps.predict.spectra import smiles_to_spectrum, molfile_to_spectrum
+from xps.models.models import *
+from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,98 +15,29 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
-
-@app.post("/v0/spectrum", 
-         response_model=XPS_prediction
+@app.post("test", 
          )
-def predict_xps_spectrum(smiles: str, sigma = 0.35):
+def test(test):
+    return test
+
+
+@app.post("/v1/fromMolfile", 
+         response_model=FullPrediction
+         )
+def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
+    logging.info(f'Request: {molfile.molfile}')
     try:
-        sigma = float(sigma)
-        logging.info(f'Predicting spectrum of {smiles}')
-        energies, intensities = smiles_to_spectrum(smiles, sigma)
-        xps = XPS_prediction(
-            energies=  list(energies),
-            intensities = list(intensities),
-            sigma = sigma
-        )
+        be = molfile_to_BE(molfile.molfile)
+        pred_spectrum = be_to_spectrum(be, sigma=sigma)
+
     except Exception as e:
         raise HTTPException(
                 status_code=422,
-                detail=f"Error in predicting spectra({e})",
+                detail=f"Error in predicting spectra ({e})",
             )
-    return xps
-
-
-@app.post("/v1/SmilesToSpectrum", 
-         response_model=SpectrumModel
-         )
-def predict_xps_spectrum(smiles: str, sigma = 0.35):
-    try:
-        sigma = float(sigma)
-        logging.info(f'Predicting spectrum of {smiles}')
-        energies, intensities = smiles_to_spectrum(smiles, sigma)
-
-        xps = SpectrumModel(spectrum = SpectrumData(
-            x = Spectrum(label = "Energies",
-                         data = list(energies),
-                         units = "eV"),
-            y = Spectrum(label = "Intensities",
-                         data= list(intensities),
-                         units = "Relative")),
-            sigma = sigma
-        )
-    except Exception as e:
-        raise HTTPException(
-                status_code=422,
-                detail=f"Error in predicting spectra({e})",
-            )
-    return xps
-
-
-@app.post("/v1/MolfileToSpectrum", 
-         response_model=SpectrumModel
-         )
-def predict_xps_spectrum2(molfile:MolfileRequest, sigma = 0.35):
-    try:
-        molfile = molfile.molfile
-        sigma = float(sigma)
-        logging.info(f'Predicting spectrum of {molfile}')
-
-        energies, intensities = molfile_to_spectrum(molfile, sigma)
-
-        xps = SpectrumModel(spectrum = SpectrumData(
-            x = Spectrum(label = "Energies",
-                         data = list(energies),
-                         units = "eV"),
-            y = Spectrum(label = "Intensities",
-                         data= list(intensities),
-                         units = "Relative")),
-            sigma = sigma
-        )
-    except Exception as e:
-        raise HTTPException(
-                status_code=422,
-                detail=f"Error in predicting spectra({e})",
-            )
-    return xps
-
-
-@app.post("/v1/bindingEnergies", 
-         response_model=XPS_BE
-         )
-def predict_BE(smiles: str):
-    logging.info(f'getting binding ergies of {smiles}')
-
-    try:
-        binding_energies = smiles_to_BE(smiles)
-        xps = XPS_BE(
-            BindingEnergies = Spectrum(label = "Intensities",
-                                       data = list(binding_energies),
-                                       units = "Relative")
-        )
-    except Exception as e:
-        raise HTTPException(
-                status_code=422,
-                detail=f"Error in predicting binding energies ({e})`",
-            )
-    return xps
+    logging.info(be)
+    return FullPrediction(
+        molfile = molfile.molfile,
+        bindingEnergies = be,
+        spectrum = pred_spectrum
+    )
