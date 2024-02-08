@@ -2,10 +2,11 @@ from fastapi import FastAPI, HTTPException
 import logging
 
 from xps.models.models import *
-from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile
+from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms
 
 logging.basicConfig(level=logging.INFO)
 
+MODEL_ELEMENTS = ['C', 'O']
 
 app = FastAPI(
     title="XPS webservice",
@@ -27,8 +28,9 @@ def test(test):
 def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
     logging.info(f'Request: {molfile.molfile}')
     try:
+        included, excluded = get_atoms(molfile.molfile)
         be = molfile_to_BE(molfile.molfile)
-        pred_spectrum = be_to_spectrum(be, sigma=sigma)
+        pred_spectrum = be_to_spectrum(be, sigma=molfile.sigma)
 
     except Exception as e:
         raise HTTPException(
@@ -37,8 +39,8 @@ def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
             )
     return FullPrediction(
         molfile = molfile.molfile,
-        elementsIncluded = [],
-        elementsExcluded = [],
+        elementsIncluded = included,
+        elementsExcluded = excluded,
         bindingEnergies = be,
         spectrum = pred_spectrum
     )
@@ -51,6 +53,7 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
     logging.info(f'Request: {smiles.smiles}')
     try:
         molfile = SMILES_to_molfile(smiles.smiles)
+        included, excluded = get_atoms(molfile.molfile)
         be = molfile_to_BE(molfile.molfile)
         pred_spectrum = be_to_spectrum(be, sigma=sigma)
 
@@ -62,8 +65,8 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
     return FullPrediction(
         molfile = molfile.molfile,
         smiles= smiles.smiles,
-        elementsIncluded = [],
-        elementsExcluded = [],
+        elementsIncluded = included,
+        elementsExcluded = excluded,
         bindingEnergies = be,
         spectrum = pred_spectrum
     )

@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 
 class MolfileRequest(BaseModel):
     molfile:str
+    sigma:float = Field(0.35, description="Sigma used for Gaussians")
 
 class SMILES(BaseModel):
     smiles:str

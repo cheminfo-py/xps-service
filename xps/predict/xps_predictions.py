@@ -21,8 +21,14 @@ SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f
                basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.} \
                compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma]))}
 
+def get_atoms(molfile:str) ->list:
+    atoms = molfile_to_xyz(molfile)
+    included = list(set([e for e in atoms.symbols if e in list(SOAP.keys())]))
+    excluded = list(set([e for e in atoms.symbols if e not in list(SOAP.keys())]))
+    return included, excluded
 
 def get_gaussians(values, sigma, limit = 2) -> SpectrumData:
+    logging.info(f'Calculating gaussian with sigma value of {sigma}')
     def g(BE_sweep, BE_max, sigma_):
         G = 1/(sigma_*np.sqrt(2*np.pi)) * np.exp(-(BE_sweep-BE_max)**2 / (2*sigma_**2))
         new_y= np.array(G)
