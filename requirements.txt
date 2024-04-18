@@ -10,3 +10,4 @@ wrapt_timeout_decorator
 requests
 ase
 quippy-ase
+xtb
