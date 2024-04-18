@@ -2,6 +2,9 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from ase.io import read
+from ase.atoms import Atoms
+from ase.optimize.bfgs import BFGS
+from xtb.ase.calculator import XTB
 from quippy.descriptors import Descriptor
 
 import logging
@@ -10,7 +13,8 @@ import numpy as np
 
 from xps.models.models import *
 import os
-cutoff = 5; dc = 0.5; sigma = 0.5
+
+cutoff = 4.25; dc = 0.5; sigma = 0.5
 zeta = 6
 SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
                atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.} \
@@ -62,7 +66,7 @@ def get_all_BEs(predictions: ModelPrediction) -> list:
             all_BE.append(be)
     return all_BE
 
-def be_to_spectrum(be:bindingEnergyPrediction,sigma= 0.35, limit = 2) -> PredictedXPSSpectrum:
+def be_to_spectrum(be:bindingEnergyPrediction, sigma= 0.35, limit = 2) -> PredictedXPSSpectrum:
     all_BEs = get_all_BEs(be)
 
     spectra_gauss  = get_gaussians(all_BEs, sigma, limit = limit)
@@ -75,7 +79,7 @@ def be_to_spectrum(be:bindingEnergyPrediction,sigma= 0.35, limit = 2) -> Predict
 
 def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
     '''Searches for the relevant model and predict the binding energy for the given element and orbital'''
-    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
+    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}_xtb.pkl'
 
     model = pickle.load(open(model_file, 'rb'))
     logging.info('Model loaded')
@@ -88,6 +92,12 @@ def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPredi
         standardDeviation = list(std)
     )
 
+def xtb_opt_from_ase(ase_molecule):
+  ase_molecule.calc = XTB(method="GFN2-xTB", accuracy=2.0, cache_api=False)
+  opt = BFGS(ase_molecule)
+  opt.run(fmax=0.1)
+  return ase_molecule
+
 def molfile_to_xyz(molfile:str):
     '''From molfile to ASE Atoms object'''
     
@@ -98,8 +108,17 @@ def molfile_to_xyz(molfile:str):
     mol = Chem.MolFromMolFile(temp_file) # Read temp file into RDKit molecule
     mol = Chem.AddHs(mol)# post-process molecule
     AllChem.EmbedMolecule(mol)
-    Chem.MolToMolFile(mol, temp_file)    # Write RDKit molecule to a temporary file
-    molecule = read(temp_file) # Read the temporary file into ASE Atoms object
+     
+    # Get symbols and position 
+    symbols = [atom.GetSymbol() for atom in mol.GetAtoms()]
+    positions = mol.GetConformer().GetPositions()
+    
+    # to create ase Atoms object (without writing/reading file)
+    molecule = Atoms(symbols=symbols, positions=positions)
+    
+    #Optimize geometry using xTB
+    xtb_opt_from_ase(molecule)
+    
     return molecule
 
 def xyz_to_soap_turbo(mol, element) -> soap:
