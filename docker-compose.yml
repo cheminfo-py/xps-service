@@ -10,4 +10,4 @@ services:
       - OMP_NUM_THREADS=${OMP_NUM_THREADS}
       - PORT=${PORT}
     ports:
-      - 127.0.0.1:${PORT}:${PORT}
+    - "127.0.0.1:40129:8000"
