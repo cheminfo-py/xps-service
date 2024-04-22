@@ -14,7 +14,7 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
-@app.post("test", 
+@app.post("/test", 
          )
 def test(test):
     return test

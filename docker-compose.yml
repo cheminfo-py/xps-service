@@ -5,7 +5,7 @@ services:
     #image: ghcr.io/cheminfo-py/xtb-service:0.2.0
     restart: always
     environment:
-      - TIMEOUT=${PORT}
+      - TIMEOUT=${TIMEOUT}
       - WORKERS=${WORKERS}
       - OMP_NUM_THREADS=${OMP_NUM_THREADS}
       - PORT=${PORT}
