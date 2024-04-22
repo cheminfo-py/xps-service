@@ -20,6 +20,11 @@ def test(test):
     return test
 
 
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
+
 @app.post("/v1/fromMolfile", 
          response_model=FullPrediction
          )
