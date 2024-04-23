@@ -11,3 +11,4 @@ services:
       - PORT=${PORT}
     ports:
     - "127.0.0.1:40129:8000"
+  

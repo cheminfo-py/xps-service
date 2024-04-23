@@ -67,7 +67,7 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
             )
     return FullPrediction(
         molfile = molfile.molfile,
-        smiles= smiles.smiles,
+        smiles = smiles.smiles,
         elementsIncluded = included,
         elementsExcluded = excluded,
         bindingEnergies = be,
