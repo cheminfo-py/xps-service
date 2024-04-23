@@ -22,10 +22,10 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 ENV PATH="/opt/conda/bin:$PATH"
 
 # Create a new conda environment with Python 3.7
-RUN /opt/conda/bin/conda create --name myenv python=3.7 -y
+RUN /opt/conda/bin/conda create --name myenv_xps_service python=3.7 -y
 
 # Activate the environment and install required packages in one command
-RUN /opt/conda/bin/conda install -n myenv rdkit -c rdkit -y \
+RUN /opt/conda/bin/conda install -n myenv_xps_service rdkit -c rdkit -y \
     && /opt/conda/bin/conda clean --all
 
 # Set the working directory
@@ -37,8 +37,8 @@ COPY xps /app/xps/
 COPY README.md /app/
 
 # Install Python dependencies in the conda environment
-RUN /opt/conda/envs/myenv/bin/pip install --no-cache-dir -r requirements.txt
+RUN /opt/conda/envs/myenv_xps_service/bin/pip install --no-cache-dir -r requirements.txt
 
 # Set the entrypoint and command to run the application
-ENTRYPOINT ["/opt/conda/envs/myenv/bin/gunicorn"]
+ENTRYPOINT ["/opt/conda/envs/myenv_xps_service/bin/gunicorn"]
 CMD ["-w", "4", "xps.main:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "-t", "30", "--keep-alive", "30"]
