@@ -46,4 +46,6 @@ class FullPrediction(BaseModel):
     bindingEnergies: List
     spectrum: PredictedXPSSpectrum
 
-
+class SimpleResponse(BaseModel):
+    message: str
+    data: list

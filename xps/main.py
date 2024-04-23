@@ -22,7 +22,7 @@ def test(test):
 
 @app.get("/ping")
 def ping():
-    return {"message": "pong"}
+    return {"message": "pongpinpluck"}
 
 
 @app.post("/v1/fromMolfile", 
@@ -72,4 +72,15 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
         elementsExcluded = excluded,
         bindingEnergies = be,
         spectrum = pred_spectrum
+    )
+    
+@app.get("/test_simple", response_model=SimpleResponse)
+def test_simple():
+    # Define the response data
+    data = [1, 2, 3, 4, 5]
+
+    # Return the response
+    return SimpleResponse(
+        message="Simple function response",
+        data=data
     )
