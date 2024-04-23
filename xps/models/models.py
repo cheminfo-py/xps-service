@@ -49,4 +49,8 @@ class FullPrediction(BaseModel):
 # Define a Pydantic class for the response
 class ListResponse(BaseModel):
     items: List[int]
+    
+class SimpleResponse(BaseModel):
+    message: str
+    data: list
 

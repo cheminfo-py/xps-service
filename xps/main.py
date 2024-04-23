@@ -79,3 +79,14 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
 def simple_list():
     # Return a list of integers as an example
     return ListResponse(items=[1, 2, 3, 4, 5])
+
+@app.get("/test_simple", response_model=SimpleResponse)
+def test_simple():
+    # Define the response data
+    data = [1, 2, 3, 4, 5]
+
+    # Return the response
+    return SimpleResponse(
+        message="Simple function response",
+        data=data
+    )
