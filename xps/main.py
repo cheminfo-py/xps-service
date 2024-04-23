@@ -50,7 +50,7 @@ def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
 
 
 @app.post("/v1/fromSMILES", 
-         response_model=FullPrediction
+         response_model = FullPrediction
          )
 def fromSMILES(smiles: SMILES, sigma = 0.35):
     logging.info(f'Request: {smiles.smiles}')
@@ -73,3 +73,9 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
         bindingEnergies = be,
         spectrum = pred_spectrum
     )
+    
+# Define a simple FastAPI function that returns a list
+@app.get("/simple_list", response_model=ListResponse)
+def simple_list():
+    # Return a list of integers as an example
+    return ListResponse(items=[1, 2, 3, 4, 5])

@@ -181,3 +181,13 @@ def SMILES_to_molfile(smiles:str) -> MolfileRequest:
     return MolfileRequest(
         molfile = content
     )
+    
+def test_MM(smiles:str) -> list:
+    '''
+    From smiles to predicted Binding Energies
+    '''
+    my_list = [1,2,4,5]
+    return List_pydantic(
+        list = my_list
+        )
+    

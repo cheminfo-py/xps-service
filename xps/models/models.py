@@ -45,5 +45,8 @@ class FullPrediction(BaseModel):
     elementsExcluded: List
     bindingEnergies: List
     spectrum: PredictedXPSSpectrum
-
+    
+# Define a Pydantic class for the response
+class ListResponse(BaseModel):
+    items: List[int]
 
