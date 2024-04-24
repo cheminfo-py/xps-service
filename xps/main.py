@@ -90,3 +90,17 @@ def test_simple():
         message="Simple function response",
         data=data
     )
+    
+
+
+@app.post("/predict_be/")
+async def predict_be(request: BERequest) -> BEResponse:
+    smiles = request.smiles
+    try:
+        # Calculate binding energies
+        response = smiles_to_BE(smiles)
+        return response
+    except Exception as e:
+        # If any error occurs, return a 400 HTTP status code
+        raise HTTPException(status_code=400, detail=str(e))
+

@@ -53,3 +53,15 @@ class ListResponse(BaseModel):
 class SimpleResponse(BaseModel):
     message: str
     data: list
+    
+    
+class BEPrediction(BaseModel):
+    element: str
+    orbital: str
+    prediction: float
+
+class BERequest(BaseModel):
+    smiles: str
+
+class BEResponse(BaseModel):
+    be_predictions: List[BEPrediction]

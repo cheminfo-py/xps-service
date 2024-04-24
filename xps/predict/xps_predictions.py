@@ -181,3 +181,17 @@ def SMILES_to_molfile(smiles:str) -> MolfileRequest:
     return MolfileRequest(
         molfile = content
     )
+    
+    
+def smiles_to_BE(smiles: str) -> BEResponse:
+    # Convert SMILES to molfile
+    molfile_request = SMILES_to_molfile(smiles)
+    molfile = molfile_request.molfile
+    
+    # Calculate binding energy predictions
+    be_predictions = molfile_to_BE(molfile)
+    
+    # Create and return the response
+    return BEResponse(be_predictions=be_predictions)
+
+    
