@@ -79,7 +79,8 @@ def be_to_spectrum(be:bindingEnergyPrediction, sigma= 0.35, limit = 2) -> Predic
 
 def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
     '''Searches for the relevant model and predict the binding energy for the given element and orbital'''
-    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}_xtb.pkl'
+    #model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}_xtb.pkl'
+    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
 
     model = pickle.load(open(model_file, 'rb'))
     logging.info('Model loaded')
@@ -117,7 +118,7 @@ def molfile_to_xyz(molfile:str):
     molecule = Atoms(symbols=symbols, positions=positions)
     
     #Optimize geometry using xTB
-    xtb_opt_from_ase(molecule)
+    #xtb_opt_from_ase(molecule)
     
     return molecule
 
@@ -168,7 +169,7 @@ def molfile_to_BE(molfile:str) -> list:
     logging.info(f"{len(be_predictions)} predictions in total, {len(not_present)} no model found")
     return be_predictions
 
-    
+#works    
 def SMILES_to_molfile(smiles:str) -> MolfileRequest:
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
@@ -182,7 +183,7 @@ def SMILES_to_molfile(smiles:str) -> MolfileRequest:
         molfile = content
     )
     
-    
+  
 def smiles_to_BE(smiles: str) -> BEResponse:
     # Convert SMILES to molfile
     molfile_request = SMILES_to_molfile(smiles)

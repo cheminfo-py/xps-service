@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 import logging
 
 from xps.models.models import *
-from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms, smiles_to_BE
+from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms, smiles_to_BE, xtb_opt_from_ase
 
 logging.basicConfig(level=logging.INFO)
 
