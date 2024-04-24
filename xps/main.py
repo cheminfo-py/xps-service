@@ -22,7 +22,7 @@ def test(test):
 
 @app.get("/ping")
 def ping():
-    return {"message": "pongpinpluckpluckblabli"}
+    return {"message": "pongpinpluckpluckblablibepredict"}
 
 
 @app.post("/v1/fromMolfile", 
