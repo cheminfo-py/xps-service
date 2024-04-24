@@ -4,7 +4,10 @@ import logging
 from xps.models.models import *
 from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms, smiles_to_BE, xtb_opt_from_ase
 
-logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 app = FastAPI(
     title="XPS webservice",
@@ -22,7 +25,7 @@ def test(test):
 
 @app.get("/ping")
 def ping():
-    return {"message": "pongpinpluckpluckblablibepredict"}
+    return {"message": "pongpinpluckpluckblablibepredictyeah"}
 
 
 @app.post("/v1/fromMolfile", 
@@ -49,30 +52,30 @@ def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
     )
 
 
-@app.post("/v1/fromSMILES", 
-         response_model=FullPrediction
-         )
-def fromSMILES(smiles: SMILES, sigma = 0.35):
-    #logging.info(f'Request: {smiles.smiles}')
+@app.post("/v1/fromSMILES", response_model=FullPrediction)
+def fromSMILES(smiles: SMILES, sigma=0.35):
+    # Log request information
     logging.info(f"Received request: SMILES = {smiles.smiles}, sigma = {sigma}")
     
     try:
+        # Convert SMILES to molfile
         molfile_request = SMILES_to_molfile(smiles.smiles)
         molfile = molfile_request.molfile
-        # Log successful conversion
-        logging.info(f"Converted SMILES to molfile")
+        logging.info("Successfully converted SMILES to molfile.")
         
         # Get included and excluded elements
         included, excluded = get_atoms(molfile)
+        logging.info(f"Included elements: {included}, Excluded elements: {excluded}")
         
-         # Calculate binding energies
+        # Calculate binding energies
         be_predictions = molfile_to_BE(molfile)
         logging.info(f"Calculated binding energies: {be_predictions}")
         
         # Generate predicted XPS spectrum
         predicted_spectrum = be_to_spectrum(be_predictions, sigma=sigma)
-        logging.info("Generated predicted XPS spectrum")
-
+        logging.info("Generated predicted XPS spectrum.")
+        
+        #
         # Create and return the full prediction response
         response = FullPrediction(
             molfile=molfile,
@@ -82,19 +85,22 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
             bindingEnergies=be_predictions,
             spectrum=predicted_spectrum
         )
-
-        logging.info("Returning full prediction response")
+        
+        # Log successful completion
+        logging.info("Returning full prediction response.")
         return response
-        be = molfile_to_BE(molfile.molfile)
-        pred_spectrum = be_to_spectrum(be, sigma=sigma)
 
     except ValidationError as ve:
+        # Handle input validation errors
         logging.error(f"Input validation error: {ve}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {ve}")
 
     except Exception as e:
+        # Handle unexpected errors
         logging.error(f"An error occurred during processing: {e}")
         raise HTTPException(status_code=500, detail=f"An internal server error occurred: {e}")
+
+
     
     
 # Define a simple FastAPI function that returns a list
