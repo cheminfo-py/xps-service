@@ -22,7 +22,7 @@ def test(test):
 
 @app.get("/ping")
 def ping():
-    return {"message": "pongpinpluck"}
+    return {"message": "pongpinpluckpluckbla"}
 
 
 @app.post("/v1/fromMolfile", 
@@ -74,10 +74,16 @@ def fromSMILES(smiles: SMILES, sigma = 0.35):
         spectrum = pred_spectrum
     )
     
+# Define a simple FastAPI function that returns a list
+@app.get("/simple_list", response_model=ListResponse)
+def simple_list():
+    # Return a list of integers as an example
+    return ListResponse(items=[1, 2, 3, 4, 5])    
+    
 @app.get("/test_simple", response_model=SimpleResponse)
 def test_simple():
     # Define the response data
-    data = [1, 2, 3, 4, 5]
+    data = [1, 2, 3, 4, 5, 6]
 
     # Return the response
     return SimpleResponse(
