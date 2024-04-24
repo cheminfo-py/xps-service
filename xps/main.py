@@ -104,3 +104,13 @@ async def predict_be(request: BERequest) -> BEResponse:
         # If any error occurs, return a 400 HTTP status code
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.post("/get_molfile/")
+async def get_molfile(request: BERequest) -> MolfileRequest:
+    smiles = request.smiles
+    try:
+        # Calculate binding energies
+        response = SMILES_to_molfile(smiles)
+        return response
+    except Exception as e:
+        # If any error occurs, return a 400 HTTP status code
+        raise HTTPException(status_code=400, detail=str(e))
