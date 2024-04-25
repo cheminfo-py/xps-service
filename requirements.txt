@@ -1,8 +1,24 @@
-fastapi== 0.68.1
+#fastapi== 0.68.1
+#gunicorn==20.1.0
+#uvicorn==0.15
+#httptools==0.3.0
+#uvloop==0.15
+#scikit-learn==1.2.2
+#diskcache
+#fastapi_versioning
+#wrapt_timeout_decorator
+#requests
+#ase
+#quippy-ase
+#xtb
+
+-c rdkit  # Specify the RDKit channel
+
+fastapi==0.68.1
 gunicorn==20.1.0
-uvicorn==0.15
+uvicorn==0.15.0
 httptools==0.3.0
-uvloop==0.15
+uvloop==0.15.0
 scikit-learn==1.2.2
 diskcache
 fastapi_versioning
