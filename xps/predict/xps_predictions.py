@@ -79,8 +79,8 @@ def be_to_spectrum(be:bindingEnergyPrediction, sigma= 0.35, limit = 2) -> Predic
 
 def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPrediction:
     '''Searches for the relevant model and predict the binding energy for the given element and orbital'''
-    #model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}_xtb.pkl'
-    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl'
+    #model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}_xtb.pkl' #model for xtb optimized molecules
+    model_file = f'xps/MLmodels/XPS_GPR_{element}{orbital}.pkl' #old model
 
     model = pickle.load(open(model_file, 'rb'))
     logging.info('Model loaded')
@@ -94,10 +94,13 @@ def soap_to_BE(soap:soap, element:str, orbital:str = '1s') -> bindingEnergyPredi
     )
 
 def xtb_opt_from_ase(ase_molecule):
-  ase_molecule.calc = XTB(method="GFN2-xTB", accuracy=2.0, cache_api=False)
-  opt = BFGS(ase_molecule)
-  opt.run(fmax=0.1)
-  return ase_molecule
+    logging.info("entering xtb_opt_function")
+    ase_molecule.calc = XTB(method="GFN2-xTB", accuracy=2.0, cache_api=False)
+    logging.info("entering xtb_opt_function: param set")
+    opt = BFGS(ase_molecule)
+    opt.run(fmax=0.1)
+    logging.info("entering xtb_opt_function: optimized")
+    return ase_molecule
 
 def molfile_to_xyz(molfile:str):
     '''From molfile to ASE Atoms object'''
@@ -116,9 +119,10 @@ def molfile_to_xyz(molfile:str):
     
     # to create ase Atoms object (without writing/reading file)
     molecule = Atoms(symbols=symbols, positions=positions)
-    
+    logging.info("molecule before optimization")
     #Optimize geometry using xTB
-    #xtb_opt_from_ase(molecule)
+    xtb_opt_from_ase(molecule)
+    logging.info("molecule after optimization")
     
     return molecule
 

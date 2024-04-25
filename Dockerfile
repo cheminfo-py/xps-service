@@ -37,7 +37,8 @@ COPY xps /app/xps/
 COPY README.md /app/
 
 # Install Python dependencies in the conda environment
-RUN /opt/conda/envs/myenv/bin/pip install --no-cache-dir -r requirements.txt
+#RUN /opt/conda/envs/myenv/bin/pip install --no-cache-dir -r requirements.txt #for prod
+RUN /opt/conda/envs/myenv/bin/pip install -r requirements.txt #for dev only
 
 # Set the entrypoint and command to run the application
 ENTRYPOINT ["/opt/conda/envs/myenv/bin/gunicorn"]

@@ -25,7 +25,7 @@ def test(test):
 
 @app.get("/ping")
 def ping():
-    return {"message": "pongpinpluckpluckblablibepredictyeah"}
+    return {"message": "backtopong"}
 
 
 @app.post("/v1/fromMolfile", 
@@ -133,6 +133,7 @@ async def predict_be(request: BERequest) -> BEResponse:
         # If any error occurs, return a 400 HTTP status code
         raise HTTPException(status_code=400, detail=str(e))
 
+#working
 @app.post("/get_molfile/")
 async def get_molfile(request: BERequest) -> MolfileRequest:
     smiles = request.smiles
