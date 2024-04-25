@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 import logging
 
 from xps.models.models import *
-from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms, smiles_to_BE, xtb_opt_from_ase
+from xps.predict.xps_predictions import molfile_to_BE, be_to_spectrum, SMILES_to_molfile, get_atoms
 
 #logging.basicConfig(level=logging.INFO)
 # Configure logging
@@ -17,43 +17,58 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
-@app.post("/test", 
-         )
-def test(test):
-    return test
-
-
 @app.get("/ping")
 def ping():
     return {"message": "backtopong"}
 
 
-@app.post("/v1/fromMolfile", 
-         response_model=FullPrediction
+@app.post("/SpectrumfromMolfile", 
+         response_model = SpectralPrediction
          )
-def fromMolfile(molfile: MolfileRequest, sigma = 0.35):
+def SpectrumfromMolfile(molfile: Molfile, sigma = 1.3):
     logging.info(f'Request: {molfile.molfile}')
     try:
         included, excluded = get_atoms(molfile.molfile)
         be = molfile_to_BE(molfile.molfile)
-        pred_spectrum = be_to_spectrum(be, sigma=molfile.sigma)
+        pred_spectrum = be_to_spectrum(be, sigma)
 
     except Exception as e:
         raise HTTPException(
                 status_code=422,
-                detail=f"Error in predicting spectra ({e})",
+                detail=f"Error in predicting spectrum ({e})",
             )
-    return FullPrediction(
+    return SpectralPrediction(
         molfile = molfile.molfile,
         elementsIncluded = included,
         elementsExcluded = excluded,
         bindingEnergies = be,
         spectrum = pred_spectrum
     )
+    
+@app.post("/BEfromMolfile", 
+         response_model = BEPrediction
+         )
+def BEfromMolfile(molfile: Molfile):
+    logging.info(f'Request: {molfile.molfile}')
+    try:
+        included, excluded = get_atoms(molfile.molfile)
+        be = molfile_to_BE(molfile.molfile)
+
+    except Exception as e:
+        raise HTTPException(
+                status_code=422,
+                detail=f"Error in predicting binding energies ({e})",
+            )
+    return SpectralPrediction(
+        molfile = molfile.molfile,
+        elementsIncluded = included,
+        elementsExcluded = excluded,
+        bindingEnergies = be
+    )
 
 
-@app.post("/v1/fromSMILES", response_model=FullPrediction)
-def fromSMILES(smiles: SMILES, sigma=0.35):
+@app.post("/SpectrumfromSMILES", response_model=SpectralPrediction)
+def SpectrumfromSMILES(smiles: SMILES, sigma = 1.3):
     # Log request information
     logging.info(f"Received request: SMILES = {smiles.smiles}, sigma = {sigma}")
     
@@ -61,29 +76,25 @@ def fromSMILES(smiles: SMILES, sigma=0.35):
         # Convert SMILES to molfile
         molfile_request = SMILES_to_molfile(smiles.smiles)
         molfile = molfile_request.molfile
-        logging.info("Successfully converted SMILES to molfile.")
         
         # Get included and excluded elements
         included, excluded = get_atoms(molfile)
-        logging.info(f"Included elements: {included}, Excluded elements: {excluded}")
         
         # Calculate binding energies
         be_predictions = molfile_to_BE(molfile)
-        logging.info(f"Calculated binding energies: {be_predictions}")
         
         # Generate predicted XPS spectrum
-        predicted_spectrum = be_to_spectrum(be_predictions, sigma=sigma)
-        logging.info("Generated predicted XPS spectrum.")
+        predicted_spectrum = be_to_spectrum(be_predictions, sigma = sigma)
         
         #
         # Create and return the full prediction response
-        response = FullPrediction(
-            molfile=molfile,
-            smiles=smiles.smiles,
-            elementsIncluded=included,
-            elementsExcluded=excluded,
-            bindingEnergies=be_predictions,
-            spectrum=predicted_spectrum
+        response = SpectralPrediction(
+            molfile = molfile,
+            smiles = smiles.smiles,
+            elementsIncluded = included,
+            elementsExcluded = excluded,
+            bindingEnergies = be_predictions,
+            spectrum = predicted_spectrum
         )
         
         # Log successful completion
@@ -99,48 +110,47 @@ def fromSMILES(smiles: SMILES, sigma=0.35):
         # Handle unexpected errors
         logging.error(f"An error occurred during processing: {e}")
         raise HTTPException(status_code=500, detail=f"An internal server error occurred: {e}")
-
-
     
     
-# Define a simple FastAPI function that returns a list
-@app.get("/simple_list", response_model=ListResponse)
-def simple_list():
-    # Return a list of integers as an example
-    return ListResponse(items=[1, 2, 3, 4, 5])    
+#MM
+@app.post("/BEfromSMILES", response_model=BEPrediction)
+def BEfromSMILES(smiles: SMILES):
+    # Log request information
+    logging.info(f"Received request: SMILES = {smiles.smiles}")
     
-@app.get("/test_simple", response_model=SimpleResponse)
-def test_simple():
-    # Define the response data
-    data = [1, 2, 3, 4, 5, 6]
-
-    # Return the response
-    return SimpleResponse(
-        message="Simple function response",
-        data=data
-    )
-    
-
-
-@app.post("/predict_be/")
-async def predict_be(request: BERequest) -> BEResponse:
-    smiles = request.smiles
     try:
+        # Convert SMILES to molfile
+        molfile_request = SMILES_to_molfile(smiles.smiles)
+        molfile = molfile_request.molfile
+        logging.info("Successfully converted SMILES to molfile.")
+        
+        # Get included and excluded elements
+        included, excluded = get_atoms(molfile)
+        logging.info(f"Included elements: {included}, Excluded elements: {excluded}")
+        
         # Calculate binding energies
-        response = smiles_to_BE(smiles)
+        be_predictions = molfile_to_BE(molfile)
+        logging.info(f"Calculated binding energies: {be_predictions}")
+        
+        # Create and return the full prediction response
+        response = BEPrediction(
+            molfile = molfile,
+            smiles = smiles.smiles,
+            elementsIncluded = included,
+            elementsExcluded = excluded,
+            bindingEnergies = be_predictions
+        )
+        
+        # Log successful completion
+        logging.info("Returning full prediction response.")
         return response
-    except Exception as e:
-        # If any error occurs, return a 400 HTTP status code
-        raise HTTPException(status_code=400, detail=str(e))
 
-#working
-@app.post("/get_molfile/")
-async def get_molfile(request: BERequest) -> MolfileRequest:
-    smiles = request.smiles
-    try:
-        # Calculate binding energies
-        response = SMILES_to_molfile(smiles)
-        return response
+    except ValidationError as ve:
+        # Handle input validation errors
+        logging.error(f"Input validation error: {ve}")
+        raise HTTPException(status_code=400, detail=f"Invalid input: {ve}")
+
     except Exception as e:
-        # If any error occurs, return a 400 HTTP status code
-        raise HTTPException(status_code=400, detail=str(e))
+        # Handle unexpected errors
+        logging.error(f"An error occurred during processing: {e}")
+        raise HTTPException(status_code=500, detail=f"An internal server error occurred: {e}")

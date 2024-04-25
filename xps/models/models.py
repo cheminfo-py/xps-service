@@ -3,10 +3,16 @@ from typing import Dict, List, Optional
 
 class MolfileRequest(BaseModel):
     molfile:str
-    sigma:float = Field(0.35, description="Sigma used for Gaussians")
+    sigma:float = Field(1.3, description="Sigma used for Gaussians")
+    
+class Molfile(BaseModel):
+    molfile:str
 
 class SMILES(BaseModel):
     smiles:str
+    
+#class Sigma(BaseModel):
+#    sigma:float    
 
 class soap(BaseModel):
     element: str
@@ -38,7 +44,7 @@ class PredictedXPSSpectrum(BaseModel):
     gaussian: SpectrumData
     sigma: float = Field(None, description= "Sigma used for Gaussians")
 
-class FullPrediction(BaseModel):
+class SpectralPrediction(BaseModel):
     molfile: str
     smiles: str = Field(None, description = "SMILES of structure (if given)")
     elementsIncluded: List
@@ -46,21 +52,10 @@ class FullPrediction(BaseModel):
     bindingEnergies: List
     spectrum: PredictedXPSSpectrum
     
-# Define a Pydantic class for the response
-class ListResponse(BaseModel):
-    items: List[int]    
-
-class SimpleResponse(BaseModel):
-    message: str
-    data: list
-      
+    
 class BEPrediction(BaseModel):
-    element: str
-    orbital: str
-    prediction: float
-
-class BERequest(BaseModel):
-    smiles: str
-
-class BEResponse(BaseModel):
-    be_predictions: List[BEPrediction]
+    molfile: str
+    smiles: str = Field(None, description = "SMILES of structure (if given)")
+    elementsIncluded: List
+    elementsExcluded: List
+    bindingEnergies: List

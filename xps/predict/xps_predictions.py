@@ -66,7 +66,7 @@ def get_all_BEs(predictions: ModelPrediction) -> list:
             all_BE.append(be)
     return all_BE
 
-def be_to_spectrum(be:bindingEnergyPrediction, sigma= 0.35, limit = 2) -> PredictedXPSSpectrum:
+def be_to_spectrum(be:bindingEnergyPrediction, sigma= 1.3, limit = 2) -> PredictedXPSSpectrum:
     all_BEs = get_all_BEs(be)
 
     spectra_gauss  = get_gaussians(all_BEs, sigma, limit = limit)
@@ -174,7 +174,7 @@ def molfile_to_BE(molfile:str) -> list:
     return be_predictions
 
 #works    
-def SMILES_to_molfile(smiles:str) -> MolfileRequest:
+def SMILES_to_molfile(smiles:str) -> Molfile:
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
     AllChem.EmbedMolecule(mol)
@@ -183,20 +183,7 @@ def SMILES_to_molfile(smiles:str) -> MolfileRequest:
         content = f.readlines()
     content = ''.join(content)
 
-    return MolfileRequest(
+    return Molfile(
         molfile = content
     )
-    
-  
-def smiles_to_BE(smiles: str) -> BEResponse:
-    # Convert SMILES to molfile
-    molfile_request = SMILES_to_molfile(smiles)
-    molfile = molfile_request.molfile
-    
-    # Calculate binding energy predictions
-    be_predictions = molfile_to_BE(molfile)
-    
-    # Create and return the response
-    return BEResponse(be_predictions=be_predictions)
-
     
