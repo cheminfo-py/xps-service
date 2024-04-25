@@ -1,5 +1,5 @@
 # Use a specific Python 3.9 base image
-FROM python:3.9-slim
+FROM python:3.7-slim
 
 # Set environment variables
 ENV LANG=C.UTF-8
@@ -22,7 +22,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 ENV PATH="/opt/conda/bin:$PATH"
 
 # Create a new conda environment with Python 3.9
-RUN /opt/conda/bin/conda create --name myenv python=3.9 -y
+RUN /opt/conda/bin/conda create --name myenv python=3.7 -y
 
 # Activate the environment and install required packages in one command
 RUN /opt/conda/bin/conda install -n myenv rdkit -c rdkit -y \
