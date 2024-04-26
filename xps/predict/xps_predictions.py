@@ -31,11 +31,11 @@ def get_atoms(molfile:str) ->list:
     excluded = list(set([e for e in atoms.symbols if e not in list(SOAP.keys())]))
     return included, excluded
 
-def get_gaussians(values, sigma, limit = 2) -> SpectrumData:
+def get_gaussians(values, sigma, limit = 5) -> SpectrumData:
     logging.info(f'Calculating gaussian with sigma value of {sigma}')
     def g(BE_sweep, BE_max, sigma_):
         G = 1/(sigma_*np.sqrt(2*np.pi)) * np.exp(-(BE_sweep-BE_max)**2 / (2*sigma_**2))
-        new_y= np.array(G)
+        new_y = np.array(G)
         return new_y
 
     # Create a range of x values for the plot
@@ -66,7 +66,7 @@ def get_all_BEs(predictions: ModelPrediction) -> list:
             all_BE.append(be)
     return all_BE
 
-def be_to_spectrum(be:bindingEnergyPrediction, sigma= 1.3, limit = 2) -> PredictedXPSSpectrum:
+def be_to_spectrum(be:bindingEnergyPrediction, sigma= 1.3, limit = 5) -> PredictedXPSSpectrum:
     all_BEs = get_all_BEs(be)
 
     spectra_gauss  = get_gaussians(all_BEs, sigma, limit = limit)

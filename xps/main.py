@@ -21,6 +21,10 @@ app = FastAPI(
 def ping():
     return {"message": "backtopong"}
 
+@app.get("/docs")
+def ping():
+    return {"Implemented": "/SpectrumfromMolfile, /BEfromMolfile, /SpectrumfromSMILES, /BEfromSMILES" }
+
 
 @app.post("/SpectrumfromMolfile", 
          response_model = SpectralPrediction
