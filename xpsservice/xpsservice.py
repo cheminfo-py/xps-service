@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-xtb-service.py
-webservice providing xtb calculations
+xps-service.py
+webservice providing xps calculations
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,14 +13,18 @@ from .conformers import conformers_from_molfile, conformers_from_smiles
 from .errors import TooLargeError
 from .ir import ir_from_molfile, ir_from_smiles
 from .models import ConformerLibrary, ConformerRequest, IRRequest, IRResult
+
+from .xps import xps_from_molfile, xps_from_smiles
+from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult
+
 from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB
 
 ALLOWED_HOSTS = ["*"]
 
 
 app = FastAPI(
-    title="XTB webservice",
-    description="Offers xtb calculation tools. Allowed methods are `GFNFF`, `GFN2xTB`, `GFN1xTB`",
+    title="XPS webservice",
+    description="Offers XPS binding energy prediction tool, based on GW simulation, and a Gaussian process ML model. Allowed elements/orbitals to be predicted are `C1s` and `O1s`. Hydrogens are taken into account but not predicted. Allowed methods for molecular geometry optimization are `GFNFF`, `GFN2xTB`, `GFN1xTB`",
     version=__version__,
     contact={"name": "Cheminfo", "email": "admin@cheminfo.org",},
     license_info={"name": "MIT"},
@@ -33,6 +37,11 @@ def max_atoms_error():
         detail=f"This services only accepts structures with less than {MAX_ATOMS_FF} atoms for force-field calculations and {MAX_ATOMS_XTB} for xtb calculations.",
     )
 
+# Define the ping route
+@app.get("/ping")
+def ping():
+    return {"message": "Pongpong"}
+
 
 @app.get("/app_version")
 @version(1)
@@ -40,14 +49,15 @@ def read_version():
     return {"app_version": __version__}
 
 
-@app.post("/ir", response_model=IRResult)
+#MM
+@app.post("/xps", response_model=XPSResult)
 @version(1)
-def post_get_ir_spectrum(irrequest: IRRequest):
+def post_get_xps_spectrum(xpsrequest: XPSRequest):
     try:
-        if irrequest.smiles:
-            ir = ir_from_smiles(irrequest.smiles, irrequest.method)
-        elif irrequest.molFile:
-            ir = ir_from_molfile(irrequest.molFile, irrequest.method)
+        if xpsrequest.smiles:
+            xps = xps_from_smiles(xpsrequest.smiles, xpsrequest.method)
+        elif xpsrequest.molFile:
+            xps = xps_from_molfile(xpsrequest.molFile, xpsrequest.method)
         else:
             raise HTTPException(
                 status_code=422,
@@ -57,7 +67,19 @@ def post_get_ir_spectrum(irrequest: IRRequest):
         raise max_atoms_error()
     except TimeoutError:
         raise HTTPException(status_code=500, detail="Calculation timed out.")
-    return ir
+    return xps
+
+
+@app.get("/xps", response_model=XPSResult)
+@version(1)
+def get_xps_spectrum(smiles: str, method: str = "GFNFF"):
+    try:
+        xps = xps_from_smiles(smiles, method)
+    except TooLargeError:
+        raise max_atoms_error()
+    except TimeoutError:
+        raise HTTPException(status_code=500, detail="Calculation timed out.")
+    return xps
 
 
 @app.post("/conformers", response_model=ConformerLibrary)
@@ -88,18 +110,6 @@ def post_conformers(conformerrequest: ConformerRequest):
     except TimeoutError:
         raise HTTPException(status_code=500, detail="Calculation timed out.")
     return conformers
-
-
-@app.get("/ir", response_model=IRResult)
-@version(1)
-def get_ir_spectrum(smiles: str, method: str = "GFNFF"):
-    try:
-        ir = ir_from_smiles(smiles, method)
-    except TooLargeError:
-        raise max_atoms_error()
-    except TimeoutError:
-        raise HTTPException(status_code=500, detail="Calculation timed out.")
-    return ir
 
 
 app = VersionedFastAPI(

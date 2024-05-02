@@ -1,2 +1,2 @@
 include versioneer.py
-include xtb-service/_version.py
+include xps-service/_version.py

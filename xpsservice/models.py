@@ -5,9 +5,12 @@ from typing import Dict, List, Optional
 import numpy as np
 from ase import Atoms
 from pydantic import BaseModel, Field, validator
+from rdkit import Chem
+
 
 ALLOWED_METHODS = ("GFNFF", "GFN2xTB", "GFN1xTB")
 ALLOWED_FF = ("uff", "mmff94", "mmff94s")
+ALLOWED_ELEMENTS = ("C", "O")
 
 
 @dataclass
@@ -63,7 +66,7 @@ class IRRequest(BaseModel):
         description="String with molfile with expanded hydrogens. The service will not attempt to add implicit hydrogens to ensure that the atom ordering is preserved.",
     )
     method: Optional[str] = Field(
-        "GFNFF",
+        "GFN2xTB",
         description="String with method that is used for geometry optimization and calculation of the vibrational frequencies. Allowed values are `GFNFF`, `GFN2xTB`, and `GFN1xTB`. `GFNFF` is the computationally most inexpensive method, but can be less accurate than the xTB methods",
     )
 
@@ -113,3 +116,66 @@ class Conformer(BaseModel):
 
 class ConformerLibrary(BaseModel):
     conformers: List[Conformer]
+
+
+#MM
+#bug: add smiles and molfile
+class XPSResult(BaseModel):
+    molfile: str = Field(
+        None, description = "Molfile (calculated or gived) used for the binding energy prediction"
+    )
+    smiles: Optional[str] = Field(
+        None, description = "SMILES (if given) used for the binding energy prediction"
+    )
+    bindingEnergies: List[float] = Field(
+        None, description="List of binding energies in eV"
+    )
+    
+
+class XPSRequest(BaseModel):
+    smiles: Optional[str] = Field(
+        None,
+        description="SMILES string of input molecule. The service will add implicit hydrogens",
+    )
+    molFile: Optional[str] = Field(
+        None,
+        description="String with molfile with expanded hydrogens. The service will not attempt to add implicit hydrogens to ensure that the atom ordering is preserved.",
+    )
+    method: Optional[str] = Field(
+        "GFN2xTB",
+        description="String with method that is used for geometry optimization and calculation of the XPS binding energies. Allowed values are `GFNFF`, `GFN2xTB`, and `GFN1xTB`. `GFNFF` is the computationally most inexpensive method, but can be less accurate than the xTB methods",
+    )
+
+    @validator("smiles")
+    def validate_smiles(cls, v):
+        if v:
+            # Parse the SMILES string using RDKit
+            mol = Chem.MolFromSmiles(v)
+            if not mol:
+                raise ValueError("Invalid SMILES string provided.")
+            # Check if all elements in the SMILES string are within the allowed elements
+            for atom in mol.GetAtoms():
+                if atom.GetSymbol() not in ALLOWED_ELEMENTS:
+                    raise ValueError(f"SMILES contains an invalid element: {atom.GetSymbol()}. Only {ALLOWED_ELEMENTS} are allowed.")
+        return v
+
+    @validator("molFile")
+    def validate_molfile(cls, v):
+        if v:
+            # Parse the molfile string using RDKit
+            mol = Chem.MolFromMolBlock(v)
+            if not mol:
+                raise ValueError("Invalid molfile provided.")
+            # Check if all elements in the molfile are within the allowed elements
+            for atom in mol.GetAtoms():
+                if atom.GetSymbol() not in ALLOWED_ELEMENTS:
+                    raise ValueError(f"Molfile contains an invalid element: {atom.GetSymbol()}. Only {ALLOWED_ELEMENTS} are allowed.")
+        return v
+
+    # Validator for the method field to ensure the method is within the allowed list of methods
+    @validator("method")
+    def validate_method(cls, v):
+        if v not in ALLOWED_METHODS:
+            raise ValueError(f"Method must be in {ALLOWED_METHODS}")
+        return v
+    

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from xtbservice.conformers import conformers_from_smiles
+from xpsservice.conformers import conformers_from_smiles
 
 
 def test_conformer_generation():

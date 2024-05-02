@@ -11,9 +11,23 @@ from .errors import TooLargeError
 from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB
 
 
+
 def hash_object(objec):
     return hashlib.md5(str(objec).encode("utf-8")).hexdigest()
 
+
+#def get_atoms(molfile:str) -> list:
+#    included = list(set([e for e in atoms.symbols if e in list(SOAP.keys())]))
+#    atoms = molfile_to_xyz(molfile)
+#    excluded = list(set([e for e in atoms.symbols if e not in list(SOAP.keys())]))
+#    return included, excluded
+
+
+def check_max_atoms(mol, max_atoms):
+    if mol.GetNumAtoms() > max_atoms:
+        raise TooLargeError(
+            f"Molecule can have maximal {max_atoms} atoms for this service"
+        )
 
 def rdkit2ase(mol):
     pos = mol.GetConformer().GetPositions()
@@ -23,14 +37,6 @@ def rdkit2ase(mol):
     atoms.pbc = False
 
     return atoms
-
-
-def check_max_atoms(mol, max_atoms):
-    if mol.GetNumAtoms() > max_atoms:
-        raise TooLargeError(
-            f"Molecule can have maximal {max_atoms} atoms for this service"
-        )
-
 
 def molfile2ase(molfile: str, max_atoms: int = MAX_ATOMS_XTB) -> Atoms:
     try:
@@ -64,17 +70,45 @@ def smiles2ase(smiles: str, max_atoms: int = MAX_ATOMS_XTB) -> Atoms:
     return result
 
 
+
+def smiles2molfile(smiles: str) -> str:
+    # Convert the SMILES string to an RDKit molecule
+    mol = Chem.MolFromSmiles(smiles)
+    # Check if the molecule was successfully created
+    if mol is None:
+        raise ValueError("Invalid SMILES string provided.")
+    # Add hydrogens, and embed the molecule to generate coordinates
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol)
+    # Convert the RDKit molecule to a molfile string
+    molfile = Chem.MolToMolBlock(mol)
+    
+    return molfile
+
+
+def molfile2smiles(molfile: str) -> str:
+    """Convert a molfile string to a SMILES string using RDKit."""
+    # Parse the molfile using RDKit
+    mol = Chem.MolFromMolBlock(molfile)
+    if mol is None:
+        raise ValueError("Invalid molfile provided.")
+    # Convert the molecule to SMILES
+    smiles = Chem.MolToSmiles(mol)
+
+    return smiles
+
+
 def hash_atoms(atoms: Atoms) -> int:
     symbols = str(atoms.symbols)
     positions = str(atoms.positions)
 
     return hash_object(symbols + positions)
 
-
+#to remove
 def get_center_of_mass(masses, positions):
     return masses @ positions / masses.sum()
 
-
+#to remove
 def get_moments_of_inertia(positions, masses):
     """Get the moments of inertia along the principal axes.
 

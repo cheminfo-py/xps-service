@@ -1,4 +1,4 @@
-from xtbservice.ir import ir_from_smiles
+from xpsservice.ir import ir_from_smiles
 from .help import clear_caches, filter_modes
 import pytest 
 

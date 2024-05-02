@@ -5,7 +5,7 @@ import os
 import numpy as np
 from fastapi.testclient import TestClient
 
-from xtbservice import __version__, app
+from xpsservice import __version__, app
 
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 client = TestClient(app)

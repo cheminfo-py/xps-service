@@ -1,4 +1,4 @@
-from xtbservice.cache import (
+from xpsservice.cache import (
     conformer_cache,
     ir_cache,
     ir_from_molfile_cache,

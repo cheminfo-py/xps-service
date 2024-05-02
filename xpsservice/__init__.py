@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-xtb-service
-webservice providing xtb calculations
+xps-service
+webservice providing xps calculations
 """
 # Handle versioneer
 from ._version import get_versions
@@ -12,4 +12,4 @@ __git_revision__ = versions["full-revisionid"]
 del get_versions, versions
 
 # Add imports here
-from .xtbservice import *
+from .xpsservice import *

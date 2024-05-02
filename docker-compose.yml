@@ -1,21 +1,21 @@
 version: "3.3"
 services:
-  xtbservice:
+  xpsservice:
     build: .
-    #image: ghcr.io/cheminfo-py/xtb-service:latest
+    #image: ghcr.io/cheminfo-py/xps-service:latest
     restart: always
     environment:
       - PORT=${PORT}
       - CACHEDIR=/ircache
       - WORKERS=${WORKERS}
       - OMP_NUM_THREADS=${OMP_NUM_THREADS}
-      - MAX_ATOMS_XTB=60
+      - MAX_ATOMS_XTB=100
       - MAX_ATOMS_FF=100
       - TIMEOUT=${TIMEOUT}
       - LOG_LEVEL=debug
     ports:
       - ${PORT}:${PORT}
     volumes:
-      - ./ircache:/ircache
+      - ./xpscache:/xpscache
     security_opt:
       - seccomp:unconfined
