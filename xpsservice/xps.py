@@ -35,6 +35,7 @@ from .utils import (
     smiles2molfile
 )
 
+#working MM
 #get soap and ML model for a given transition, i.e C1s
 def get_soap_and_model(transition: str):
     # Validate the transition
@@ -64,6 +65,7 @@ def get_soap_and_model(transition: str):
     return soap_config, ml_model
 
 
+#working MM
 def load_ml_model(transition_info: Dict[str, Any]) -> Any:
     try:
         model_filepath = transition_info['model_filepath']
@@ -77,6 +79,7 @@ def load_ml_model(transition_info: Dict[str, Any]) -> Any:
         raise RuntimeError(f"Failed to load model file {model_filepath}: {str(e)}")
 
 
+#working MM
 def load_soap_config(transition_info):
     # Get the filepath for the SOAP configuration
     soap_filepath = transition_info['soap_filepath']
@@ -99,6 +102,7 @@ def load_soap_config(transition_info):
     return locals()['SOAP']
 
 
+#working MM
 def test_model_and_soap_loading(transition_map):
     # Create a list to store test results
     test_results = []
@@ -124,6 +128,9 @@ def test_model_and_soap_loading(transition_map):
             test_results.append((transition_key, f"Failure: {str(e)}"))
 
     return test_results
+
+
+
 
 def xps_from_smiles(smiles:str):
     a = 1
@@ -357,15 +364,7 @@ def run_xtb_ir(
 
 
 
-def load_soap():
-    soap_config = soap_cache.get("my_soap")
-    if soap_config is None:
-        logger.debug("SOAP not loaded, running and setting SOAP in cache.")
-        # Here you set the SOAP in the cache
-        soap_cache.set("my_soap", SOAP)
-        soap_config = SOAP  # This allows you to use the SOAP variable if needed
-    return soap_config
-    
+
 
 
 
@@ -383,11 +382,12 @@ def load_soap():
 #prefered method
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
 def calculate_from_molfile(molfile, method, myhash):
-    atoms, mol = molfile2ase(molfile, get_max_atoms(method))
-    opt_result = run_xtb_opt(atoms, method=method)
-    result = run_xtb_xps(opt_result.atoms, method=method, mol=mol)
-    xps_from_molfile_cache.set(myhash, result, expire=None)
-    return result
+    atoms, mol = molfile2ase(molfile, get_max_atoms(method)) #in utils
+    opt_result = run_xtb_opt(atoms, method=method) #in optimize
+    #result = run_xtb_xps(opt_result.atoms, method=method, mol=mol)
+    #xps_from_molfile_cache.set(myhash, result, expire=None)
+    #return result
+    return "allright"
 
 
 def ir_from_molfile(molfile, method):

@@ -9,6 +9,9 @@ from ase import Atoms
 from pydantic import BaseModel, Field, validator
 from rdkit import Chem
 
+
+
+
 # Define transition_map dictionary
 # Add more entries for other orbitals as needed
 transition_map = {
@@ -29,7 +32,6 @@ transition_map = {
         "model_filepath": os.path.abspath("xpsservice/XPS_GPR_O1s.pkl")
     },   
 }
-
 
 
 # Derive allowed elements from transition_map
@@ -171,6 +173,12 @@ class XPSResult(BaseModel):
     )
     
 
+
+
+# XPSRequest class supports accepting either a smiles string or a molFile string.
+# When one of the fields (smiles or molFile) is provided, the other field is automatically
+# converted and populated using the functions smiles2molfile and molfile2smiles.
+# the inputs are checked using ALLOWED_ELEMENTS, and ALLOWED_METHODS
 class XPSRequest(BaseModel):
     smiles: Optional[str] = Field(
         None,
@@ -217,4 +225,5 @@ class XPSRequest(BaseModel):
         if v not in ALLOWED_METHODS:
             raise ValueError(f"Method must be in {ALLOWED_METHODS}")
         return v
+
     

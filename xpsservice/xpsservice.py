@@ -10,6 +10,7 @@ from starlette.middleware import Middleware
 
 from . import __version__
 from .conformers import conformers_from_molfile, conformers_from_smiles
+from .utils import smiles2molfile, molfile2smiles
 from .errors import TooLargeError
 from .ir import ir_from_molfile, ir_from_smiles
 from .models import ConformerLibrary, ConformerRequest, IRRequest, IRResult
@@ -19,11 +20,13 @@ from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult, t
 
 from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB
 
+import logging
+
 ALLOWED_HOSTS = ["*"]
 
 
 app = FastAPI(
-    title="XPS webservice",
+    title="EPFL-ISIC-XRDSAP: XPS webservice",
     description="Offers XPS binding energy prediction tool, based on GW simulation, and a Gaussian process ML model. Allowed elements/orbitals to be predicted are `C1s` and `O1s`. Hydrogens are taken into account but not predicted. Allowed methods for molecular geometry optimization are `GFNFF`, `GFN2xTB`, `GFN1xTB`",
     version=__version__,
     contact={"name": "Cheminfo", "email": "admin@cheminfo.org",},
@@ -60,6 +63,36 @@ async def test_loading():
     
     # Return the results as a JSON response
     return response
+
+
+@app.post("/calculate")
+async def calculate(request: XPSRequest):
+    # Extract SMILES and molFile from the request
+    logging.debug("ENTERED")
+    smiles = request.smiles
+    molFile = request.molFile
+    logging.debug("loaded")
+
+    # Perform conversions based on the provided input
+    if smiles and not molFile:
+        logging.debug("if smiles")
+        # Convert SMILES to molFile using your function
+        molFile = smiles2molfile(smiles)
+        logging.debug("smiles conversion")
+    elif molFile and not smiles:
+        # Convert molFile to SMILES using your function
+        smiles = molfile2smiles(molFile)
+    elif not smiles and not molFile:
+        raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
+
+    # Perform your logic using the converted data (smiles and molFile)
+
+    # For example, call your calculate_from_molfile function
+    #result = calculate_from_molfile(molFile, request.method, hash(smiles))
+
+    # Return the result
+    #return {"result": result}
+    return {"result": smiles}
 
 
 #MM

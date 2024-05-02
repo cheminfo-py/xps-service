@@ -4,6 +4,7 @@ import hashlib
 import numpy as np
 from ase import Atoms
 from rdkit import Chem
+from rdkit.Chem import AllChem
 
 from .cache import conformer_cache
 from .conformers import embed_conformer
