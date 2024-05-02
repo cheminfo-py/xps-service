@@ -1,16 +1,55 @@
 # -*- coding: utf-8 -*-
+import os
+
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Any
 
 import numpy as np
 from ase import Atoms
 from pydantic import BaseModel, Field, validator
 from rdkit import Chem
 
+# Define transition_map dictionary
+# Add more entries for other orbitals as needed
+transition_map = {
+    "C1s": {
+        "element": "C",
+        "orbital": "1s",
+        "soap": "soap_C1s",
+        "soap_filepath": os.path.abspath("xpsservice/SOAP_turbo_C1s.txt"),
+        "model": "model_C1s",
+        "model_filepath": os.path.abspath("xpsservice/XPS_GPR_C1s.pkl")
+    },
+    "O1s": {
+        "element": "O",
+        "orbital": "1s",
+        "soap": "soap_O1s",
+        "soap_filepath": os.path.abspath("xpsservice/SOAP_turbo_O1s.txt"),
+        "model": "model_O1s",
+        "model_filepath": os.path.abspath("xpsservice/XPS_GPR_O1s.pkl")
+    },   
+}
 
+
+
+# Derive allowed elements from transition_map
+def derive_allowed_elements(transition_map: dict) -> Set[str]:
+    allowed_elements = {info["element"] for info in transition_map .values()}
+    return allowed_elements
+
+ALLOWED_ELEMENTS = derive_allowed_elements(transition_map)
 ALLOWED_METHODS = ("GFNFF", "GFN2xTB", "GFN1xTB")
 ALLOWED_FF = ("uff", "mmff94", "mmff94s")
-ALLOWED_ELEMENTS = ("C", "O")
+
+#MM, bug: Not sure to be needed
+class TransitionValidator(BaseModel):
+    transition: str
+    
+    @validator("transition")
+    def check_orbital(cls, value):
+        if value not in transition_map:
+            raise ValueError(f"Transition {value} is not allowed.")
+        return value
 
 
 @dataclass

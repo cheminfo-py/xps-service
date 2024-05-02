@@ -5,6 +5,7 @@ uvicorn==0.15
 httptools==0.3.0
 uvloop==0.15
 git+https://github.com/kjappelbaum/ase.git@polarizability
+scikit-learn
 diskcache
 fastapi_versioning
 wrapt_timeout_decorator

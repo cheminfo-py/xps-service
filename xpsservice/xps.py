@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+
 from csv import excel
 import shutil
 from functools import lru_cache
@@ -6,6 +8,9 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import wrapt_timeout_decorator
+import logging
+import pickle
+
 from ase import Atoms
 from ase.calculators.bond_polarizability import BondPolarizability
 from ase.vibrations import Infrared
@@ -17,6 +22,7 @@ from scipy import spatial
 from xtb.ase.calculator import XTB
 from math import pi, sqrt, log
 from .cache import ir_cache, ir_from_molfile_cache, ir_from_smiles_cache
+from .cache import soap_cache, ml_cache
 from .models import *
 from .optimize import run_xtb_opt
 from .settings import IMAGINARY_FREQ_THRESHOLD, MAX_ATOMS_FF, MAX_ATOMS_XTB, TIMEOUT
@@ -28,6 +34,96 @@ from .utils import (
     smiles2ase,
     smiles2molfile
 )
+
+#get soap and ML model for a given transition, i.e C1s
+def get_soap_and_model(transition: str):
+    # Validate the transition
+    TransitionValidator(transition=transition)
+    
+    # Retrieve the SOAP and model from the mapping
+    transition_info = transition_map[transition]
+    soap_key = transition_info["soap"]
+    model_key = transition_info["model"]
+    
+    # Check the cache for SOAP configuration
+    soap_config = soap_cache.get(soap_key)
+    if soap_config is None:
+        # Load SOAP config if not in cache (replace with your loading logic)
+        soap_config = load_soap_config(transition_info)
+        soap_cache[soap_key] = soap_config
+    logging.info("soap xx loaded")
+
+    # Check the cache for ML model
+    ml_model = ml_cache.get(model_key)
+    if ml_model is None:
+        # Load ML model if not in cache (replace with your loading logic)
+        ml_model = load_ml_model(transition_info)
+        ml_cache[model_key] = ml_model
+    logging.info("ml xx loaded")
+
+    return soap_config, ml_model
+
+
+def load_ml_model(transition_info: Dict[str, Any]) -> Any:
+    try:
+        model_filepath = transition_info['model_filepath']
+        with open(model_filepath, 'rb') as model_file:
+            model = pickle.load(model_file)
+        logging.debug(f"Loaded ML model for {transition_info['element']} {transition_info['orbital']}")
+        return model
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Model file not found at {model_filepath}.")
+    except pickle.UnpicklingError as e:
+        raise RuntimeError(f"Failed to load model file {model_filepath}: {str(e)}")
+
+
+def load_soap_config(transition_info):
+    # Get the filepath for the SOAP configuration
+    soap_filepath = transition_info['soap_filepath']
+    
+    # Check if the file exists
+    if not os.path.exists(soap_filepath):
+        raise FileNotFoundError(f"SOAP configuration file not found at path: {soap_filepath}")
+    
+    # Read the SOAP configuration file
+    with open(soap_filepath, 'r') as file:
+        # Read the content of the file and execute it as Python code
+        exec(file.read())
+        
+    # Check if the variable `SOAP` is defined in the file's content
+    if 'SOAP' not in locals():
+        raise ValueError(f"SOAP configuration variable 'SOAP' not defined in the file: {soap_filepath}")
+    
+    logging.debug(f"Loaded SOAP config for {transition_info['element']} {transition_info['orbital']}")
+    # Return the SOAP configuration
+    return locals()['SOAP']
+
+
+def test_model_and_soap_loading(transition_map):
+    # Create a list to store test results
+    test_results = []
+    
+    logging.debug("entered test function for transition_map")
+    
+    # Iterate through all transitions in the transition_map
+    for transition_key, transition_info in transition_map.items():
+        logging.debug(f"entered loop for {transition_info['element']} {transition_info['orbital']}")
+        try:
+            # Load the ML model and SOAP configuration
+            soap_config, ml_model = get_soap_and_model(transition_key)
+        
+            # Perform some basic checks
+            if soap_config and ml_model:
+                # If both SOAP config and ML model are loaded, the test is successful
+                test_results.append((transition_key, "Success"))
+            else:
+                # If either the SOAP config or ML model is not loaded, the test fails
+                test_results.append((transition_key, "Failure: Either SOAP config or ML model not loaded"))
+        except Exception as e:
+            # Capture any exceptions during loading and mark the test as failed
+            test_results.append((transition_key, f"Failure: {str(e)}"))
+
+    return test_results
 
 def xps_from_smiles(smiles:str):
     a = 1
@@ -260,19 +356,16 @@ def run_xtb_ir(
 
 
 
-##################
 
-#Bug: add to cache
-cutoff = 4.25; dc = 0.5; sigma = 0.5
-zeta = 6
-SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
-               atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.} \
-               basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=2 central_weight={1. 1. 1.} \
-               compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma])),
-        "O": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
-               atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.} \
-               basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.} \
-               compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma]))}
+def load_soap():
+    soap_config = soap_cache.get("my_soap")
+    if soap_config is None:
+        logger.debug("SOAP not loaded, running and setting SOAP in cache.")
+        # Here you set the SOAP in the cache
+        soap_cache.set("my_soap", SOAP)
+        soap_config = SOAP  # This allows you to use the SOAP variable if needed
+    return soap_config
+    
 
 
 

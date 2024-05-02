@@ -14,8 +14,8 @@ from .errors import TooLargeError
 from .ir import ir_from_molfile, ir_from_smiles
 from .models import ConformerLibrary, ConformerRequest, IRRequest, IRResult
 
-from .xps import xps_from_molfile, xps_from_smiles
-from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult
+from .xps import *
+from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult, transition_map
 
 from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB
 
@@ -40,13 +40,26 @@ def max_atoms_error():
 # Define the ping route
 @app.get("/ping")
 def ping():
-    return {"message": "Pongpong"}
+    return {"message": "Spongeeeeeyeah"}
 
 
 @app.get("/app_version")
 @version(1)
 def read_version():
     return {"app_version": __version__}
+
+
+#TEST THE loading of the ml model and soap
+@app.get("/test_model_and_soap_loading")
+async def test_loading():
+    # Call the test function
+    test_results = test_model_and_soap_loading(transition_map)
+    
+    # Convert the results to a list of dictionaries
+    response = [{"transition": result[0], "result": result[1]} for result in test_results]
+    
+    # Return the results as a JSON response
+    return response
 
 
 #MM
@@ -67,7 +80,7 @@ def post_get_xps_spectrum(xpsrequest: XPSRequest):
         raise max_atoms_error()
     except TimeoutError:
         raise HTTPException(status_code=500, detail="Calculation timed out.")
-    return xps
+    return {"hello"}
 
 
 @app.get("/xps", response_model=XPSResult)
