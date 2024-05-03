@@ -32,9 +32,24 @@ from .utils import (
     hash_atoms,
     hash_object,
     molfile2ase,
-    smiles2ase,
-    smiles2molfile
+    smiles2molfile,
+    molfile2smiles
 )
+
+
+def load_models_and_descriptors():
+    # Iterate through the transition_map and load each model and descriptor
+    for transition_key, transition_info in transition_map.items():
+        soap_key = transition_info["soap_descriptor"]
+        model_key = transition_info["model"]
+
+        # Load SOAP descriptor and model and add to cache
+        soap_descriptor = load_soap_descriptor(transition_info)
+        ml_model = load_ml_model(transition_info)
+
+        # Set cache entries
+        soap_descriptor_cache.set(soap_key, soap_descriptor, expire=None)
+        model_cache.set(model_key, ml_model, expire=None)
 
 #working MM
 #get soap and ML model for a given transition_key, as defined in transition_map from .models.py, i.e C1s
@@ -133,8 +148,93 @@ def test_model_and_soap_loading(transition_map):
 
     return test_results
 
+###########
+def calculate_binding_energies(ase_mol: Atoms, transition_key):
+    if not isinstance(ase_mol, Atoms):
+        raise TypeError(f"in calculate_binding_energies expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
+    """
+    Calculate binding energies for the atoms of a given molecule based on the loaded ML model and loaded descriptor.
+    
+    Parameters:
+    mol: The molecule object.
+    element: The element for which to calculate binding energies.
+    transition_key: The specific transition_key follows the naming in transition_map from .models.py (e.g., "C1s" or "O1s").
+
+    Returns:
+    list: A list of binding energy predictions for the specified element and transition.
+    """
+    transition_info = transition_map[transition_key]
+    element = transition_info['element']
+    orbital = transition_info['orbital']
+
+    # Check if the input transition is one of the keys in the transition_map
+    if transition_key not in transition_map:
+        raise KeyError(f"Transition '{transition_key}' is not a valid transition. Valid transitions are: {list(transition_map.keys())}")
+    
+    # Retrieve SOAP descriptor from the cache
+    soap_descriptor = soap_descriptor_cache.get(transition_key)
+    if soap_descriptor is None:
+        logging.error(f"SOAP descriptor not found in cache for transition {transition_key}")
+        return []
+
+    # Retrieve ML model from the cache
+    ml_model = model_cache.get(transition_key)
+    if ml_model is None:
+        logging.error(f"ML model not found in cache for transition {transition_key}")
+        return []
+
+    # Calculate the SOAP descriptor for the molecule
+    descriptor_values = soap_descriptor.calc(ase_mol)
+
+    # Check if the descriptor data is available
+    if 'data' not in descriptor_values:
+        logging.error(f"No descriptor data found for molecule with transition {transition_key}")
+        return []
+
+    # Get the data from the descriptor object
+    descriptor_data = descriptor_values['data']
+
+    # Predict binding energies using the ML model
+    be, std = ml_model.predict(descriptor_data, return_std=True)
+    logging.info(f'Predicted {len(be)} binding energies for element {element}, orbital {orbital}, defined in {transition_key}')
+
+    # Return a list of binding energy predictions
+    return list(zip(be, std))
 
 
+def run_xps_calculations(ase_mol: Atoms) -> dict:
+    if not isinstance(ase_mol, Atoms):
+        raise TypeError(f"in run_xps_calculation, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
+    """
+    From ASE molecule to predicted binding energies.
+    """
+    logging.info(f"ASE molecule: {ase_mol}")
+
+    # Dictionary to store predictions by element and transition
+    be_predictions = {}
+
+    # Iterate through the keys (transitions) in transition_map
+    for transition_key in transition_map.keys():
+        # Retrieve the element and orbital from the transition info
+        transition_info = transition_map[transition_key]
+        element = transition_info['element']
+
+        # Check if the element is present in the ASE molecule
+        if element in ase_mol.symbols:
+            # Calculate binding energies for the element and transition
+            predictions = calculate_binding_energies(ase_mol, transition_key)
+
+            # Store the predictions in the dictionary using the transition_key as the key
+            be_predictions[transition_key] = predictions
+        else:
+            logging.warning(f"No model found for element {element} in transition {transition}")
+
+    return be_predictions
+
+
+
+
+###########
 def get_max_atoms(method):
     if method == "GFNFF":
         return MAX_ATOMS_FF
@@ -142,6 +242,83 @@ def get_max_atoms(method):
         return MAX_ATOMS_XTB
     elif method == "GFN1xTB":
         return MAX_ATOMS_XTB
+
+#################
+
+
+@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
+def calculate_from_molfile(molfile, method) -> XPSResult:
+    print("entered calculate")
+    # Convert molfile to smiles and ASE molecule
+    smiles = molfile2smiles(molfile)
+    ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
+    print("converted molfile to ase")
+    if not isinstance(ase_mol, Atoms):
+        raise TypeError(f"in calculate_from_molfile, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
+    # Optimize the ASE molecule
+    opt_ase_mol = run_xtb_opt(ase_mol, method=method)
+    print("ran xtb opt")
+    # Run XPS calculations
+    be_predictions = run_xps_calculations(opt_ase_mol.atoms)
+    print("ran be predictions")
+    # Extract binding energies and standard deviations
+    binding_energies = []
+    standard_deviations = []
+    for transition_key, predictions in be_predictions.items():
+        print("entered loop")
+        energies, stds = zip(*predictions)
+        binding_energies.extend(list(energies))
+        standard_deviations.extend(list(stds))
+
+    # Create an instance of XPSResult
+    xps_result = XPSResult(
+        molfile=molfile,
+        smiles=smiles,
+        bindingEnergies=binding_energies,
+        standardDeviations=standard_deviations
+    )
+
+    return xps_result
+
+
+
+
+
+
+
+#The general SOAP descriptor is constructed using the associated 
+# SOAP config using descriptor = Descriptor(SOAP_config[element])
+# the molecular descriptor is calculated using descriptor.calc(mol)
+
+#def xyz_to_soap_turbo(mol, element):
+#    '''Create soap turbo descriptor'''
+#    desriptor = Descriptor(soap_config_cache[element])
+
+#    atoms = []
+#    descMol = desriptor.calc(mol) #descriptor for each atom
+
+#        desc_data = descMol['data'] #get the data from the descriptor object if exist
+#    if 'data' in descMol:
+#        for atom in desc_data:
+#            atoms.append(atom)
+#    return soap(
+#        element = element,
+#        descriptor = SOAP[element],
+#        data = atoms
+#    )
+
+
+
+
+
+
+
+
+
+
+##################################
+##################################
+
 
 
 def ir_hash(atoms, method):
@@ -356,58 +533,6 @@ def run_xtb_ir(
         ir.clean()
     return result
 
-
-
-
-
-
-
-
-
-
-
-
-#################
-
-
-
-
-
-
-#prefered method
-@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
-def calculate_from_molfile(molfile, method, myhash):
-    atoms, mol = molfile2ase(molfile, get_max_atoms(method)) #in utils, generates conformers using rdkit
-    opt_result = run_xtb_opt(atoms, method=method) #in optimize / opt_result.atoms = optimized ase molecules
-    #result = run_xtb_xps(opt_result.atoms, method=method, mol=mol)
-    #xps_from_molfile_cache.set(myhash, result, expire=None)
-    #return result
-    return "allright"
-
-
-
-
-
-#The general SOAP descriptor is constructed using the associated 
-# SOAP config using descriptor = Descriptor(SOAP_config[element])
-# the molecular descriptor is calculated using descriptor.calc(mol)
-
-#def xyz_to_soap_turbo(mol, element):
-#    '''Create soap turbo descriptor'''
-#    desriptor = Descriptor(soap_config_cache[element])
-
-#    atoms = []
-#    descMol = desriptor.calc(mol) #descriptor for each atom
-
-#        desc_data = descMol['data'] #get the data from the descriptor object if exist
-#    if 'data' in descMol:
-#        for atom in desc_data:
-#            atoms.append(atom)
-#    return soap(
-#        element = element,
-#        descriptor = SOAP[element],
-#        data = atoms
-#    )
 
 
 
@@ -687,10 +812,3 @@ def get_change_in_moi(atoms, ir, mode_number):
         )
         - np.linalg.norm(get_moments_of_inertia(atoms.positions, atoms.get_masses()))
     )
-
-
-#def load_models():
-
-#def xps_from_molfile():
-
-#def xps_from_smiles():

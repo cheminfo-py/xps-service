@@ -33,6 +33,12 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
+# Application startup event
+@app.on_event("startup")
+async def startup_event():
+    # Load ML models and SOAP descriptors into cache
+    load_models_and_descriptors()
+
 
 def max_atoms_error():
     return HTTPException(
@@ -68,7 +74,7 @@ async def test_loading():
 @app.post("/calculate")
 async def calculate(request: XPSRequest):
     # Extract SMILES and molFile from the request
-    logging.debug("ENTERED")
+    logging.debug("ENTERED Calculate")
     smiles = request.smiles
     molFile = request.molFile
     logging.debug("loaded")
@@ -93,6 +99,47 @@ async def calculate(request: XPSRequest):
     # Return the result
     #return {"result": result}
     return {"result smiles": smiles, "result molFile": molFile}
+
+
+# Define the POST endpoint
+@app.post("/calculate_binding_energies", response_model=XPSResult)
+def calculate_binding_energies_endpoint(request: XPSRequest):
+    # Extract the input data
+    smiles = request.smiles
+    molfile = request.molFile
+    method = request.method
+    print("loaded XPSRequest")
+    
+    # Perform conversions to molfile based on the provided input
+    if smiles and not molfile:
+        logging.debug("if smiles")
+        # Convert SMILES to molFile using your function
+        molfile = smiles2molfile(smiles)
+        logging.debug("smiles conversion")
+    elif molfile and not smiles:
+        # Convert molFile to SMILES using your function
+        smiles = molfile2smiles(molfile)
+    elif not smiles and not molfile:
+        raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
+    
+    print("performed conversion to smiles/molfile")
+    # Perform calculations
+    try:
+        result = calculate_from_molfile(molfile, method)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Return the result
+    return result
+
+
+
+
+
+
+
+
+
 
 
 #MM

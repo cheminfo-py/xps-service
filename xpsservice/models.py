@@ -167,6 +167,9 @@ class XPSResult(BaseModel):
     bindingEnergies: List[float] = Field(
         None, description="List of binding energies in eV"
     )
+    standardDeviations: List[float] = Field(
+        None, description="List of standard deviations of the binding energies in eV"
+    )
     
 
 
