@@ -43,7 +43,7 @@ def max_atoms_error():
 # Define the ping route
 @app.get("/ping")
 def ping():
-    return {"message": "Spongeeeeeyeah"}
+    return {"message": "pong"}
 
 
 @app.get("/app_version")
@@ -92,7 +92,7 @@ async def calculate(request: XPSRequest):
 
     # Return the result
     #return {"result": result}
-    return {"result": smiles}
+    return {"result smiles": smiles, "result molFile": molFile}
 
 
 #MM

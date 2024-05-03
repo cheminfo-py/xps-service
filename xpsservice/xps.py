@@ -16,13 +16,14 @@ from ase.calculators.bond_polarizability import BondPolarizability
 from ase.vibrations import Infrared
 from ase.vibrations.placzek import PlaczekStatic
 from ase.vibrations.raman import StaticRamanCalculator
+from quippy.descriptors import Descriptor
 from fastapi.logger import logger
 from rdkit import Chem
 from scipy import spatial
 from xtb.ase.calculator import XTB
 from math import pi, sqrt, log
 from .cache import ir_cache, ir_from_molfile_cache, ir_from_smiles_cache
-from .cache import soap_cache, ml_cache
+from .cache import soap_config_cache, soap_descriptor_cache, model_cache
 from .models import *
 from .optimize import run_xtb_opt
 from .settings import IMAGINARY_FREQ_THRESHOLD, MAX_ATOMS_FF, MAX_ATOMS_XTB, TIMEOUT
@@ -36,33 +37,36 @@ from .utils import (
 )
 
 #working MM
-#get soap and ML model for a given transition, i.e C1s
-def get_soap_and_model(transition: str):
+#get soap and ML model for a given transition_key, as defined in transition_map from .models.py, i.e C1s
+def get_soap_and_model(transition_key: str):
     # Validate the transition
-    TransitionValidator(transition=transition)
+    TransitionValidator(transition = transition_key)
     
     # Retrieve the SOAP and model from the mapping
-    transition_info = transition_map[transition]
-    soap_key = transition_info["soap"]
-    model_key = transition_info["model"]
+    transition_info = transition_map[transition_key]
     
-    # Check the cache for SOAP configuration
-    soap_config = soap_cache.get(soap_key)
+    # Check the cache for SOAP configuration, construct if not in cache
+    soap_config = soap_config_cache.get(transition_key)
     if soap_config is None:
-        # Load SOAP config if not in cache (replace with your loading logic)
         soap_config = load_soap_config(transition_info)
-        soap_cache[soap_key] = soap_config
-    logging.info("soap xx loaded")
+        soap_config_cache.set(transition_key, soap_config, expire = None)
+    logging.info(f"soap config for {transition_key} loaded")
 
-    # Check the cache for ML model
-    ml_model = ml_cache.get(model_key)
+    # Check the cache for SOAP descriptor, construct if not in cache
+    soap_descriptor = soap_descriptor_cache.get(transition_key)
+    if soap_descriptor is None:
+        soap_descriptor = Descriptor(soap_config_cache.get(transition_key))
+        soap_descriptor_cache.set(transition_key, soap_descriptor, expire=None)
+    logging.info(f"SOAP descriptor for {transition_key} loaded")
+
+    # Check the cache for ML model, construct if not in cache
+    ml_model = model_cache.get(transition_key)
     if ml_model is None:
-        # Load ML model if not in cache (replace with your loading logic)
         ml_model = load_ml_model(transition_info)
-        ml_cache[model_key] = ml_model
-    logging.info("ml xx loaded")
+        model_cache.set(transition_key, ml_model, expire = None)
+    logging.info(f"ML model for {transition_key} loaded")
 
-    return soap_config, ml_model
+    return soap_config, soap_descriptor, ml_model
 
 
 #working MM
@@ -114,15 +118,15 @@ def test_model_and_soap_loading(transition_map):
         logging.debug(f"entered loop for {transition_info['element']} {transition_info['orbital']}")
         try:
             # Load the ML model and SOAP configuration
-            soap_config, ml_model = get_soap_and_model(transition_key)
+            soap_config, soap_descriptor, ml_model = get_soap_and_model(transition_key)
         
             # Perform some basic checks
-            if soap_config and ml_model:
-                # If both SOAP config and ML model are loaded, the test is successful
+            if soap_config and soap_descriptor and ml_model:
+                # If SOAP config, soap descriptor and ML model are loaded, the test is successful
                 test_results.append((transition_key, "Success"))
             else:
-                # If either the SOAP config or ML model is not loaded, the test fails
-                test_results.append((transition_key, "Failure: Either SOAP config or ML model not loaded"))
+                # If either of the 3 is not loaded, the test fails
+                test_results.append((transition_key, "Failure: Either SOAP config, SOAP descriptor or ML model not loaded"))
         except Exception as e:
             # Capture any exceptions during loading and mark the test as failed
             test_results.append((transition_key, f"Failure: {str(e)}"))
@@ -130,15 +134,6 @@ def test_model_and_soap_loading(transition_map):
     return test_results
 
 
-
-
-def xps_from_smiles(smiles:str):
-    a = 1
-    return a
-
-def xps_from_molfile(molfile:str):
-    a = 1
-    return a
 
 def get_max_atoms(method):
     if method == "GFNFF":
@@ -382,12 +377,47 @@ def run_xtb_ir(
 #prefered method
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
 def calculate_from_molfile(molfile, method, myhash):
-    atoms, mol = molfile2ase(molfile, get_max_atoms(method)) #in utils
-    opt_result = run_xtb_opt(atoms, method=method) #in optimize
+    atoms, mol = molfile2ase(molfile, get_max_atoms(method)) #in utils, generates conformers using rdkit
+    opt_result = run_xtb_opt(atoms, method=method) #in optimize / opt_result.atoms = optimized ase molecules
     #result = run_xtb_xps(opt_result.atoms, method=method, mol=mol)
     #xps_from_molfile_cache.set(myhash, result, expire=None)
     #return result
     return "allright"
+
+
+
+
+
+#The general SOAP descriptor is constructed using the associated 
+# SOAP config using descriptor = Descriptor(SOAP_config[element])
+# the molecular descriptor is calculated using descriptor.calc(mol)
+
+#def xyz_to_soap_turbo(mol, element):
+#    '''Create soap turbo descriptor'''
+#    desriptor = Descriptor(soap_config_cache[element])
+
+#    atoms = []
+#    descMol = desriptor.calc(mol) #descriptor for each atom
+
+#        desc_data = descMol['data'] #get the data from the descriptor object if exist
+#    if 'data' in descMol:
+#        for atom in desc_data:
+#            atoms.append(atom)
+#    return soap(
+#        element = element,
+#        descriptor = SOAP[element],
+#        data = atoms
+#    )
+
+
+
+
+
+
+
+
+
+
 
 
 def ir_from_molfile(molfile, method):

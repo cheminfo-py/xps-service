@@ -34,7 +34,6 @@ def run_xtb_opt(
         logger.debug(f"Optimization not found in cache, running")
         mol = deepcopy(atoms)
         mol.pbc = False
-
         mol.calc = XTB(method=method)
         opt = LBFGS(mol, logfile=None)
         opt.run(fmax=fmax, steps=maxiter)

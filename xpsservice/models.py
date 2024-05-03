@@ -18,17 +18,13 @@ transition_map = {
     "C1s": {
         "element": "C",
         "orbital": "1s",
-        "soap": "soap_C1s",
         "soap_filepath": os.path.abspath("xpsservice/SOAP_turbo_C1s.txt"),
-        "model": "model_C1s",
         "model_filepath": os.path.abspath("xpsservice/XPS_GPR_C1s.pkl")
     },
     "O1s": {
         "element": "O",
         "orbital": "1s",
-        "soap": "soap_O1s",
         "soap_filepath": os.path.abspath("xpsservice/SOAP_turbo_O1s.txt"),
-        "model": "model_O1s",
         "model_filepath": os.path.abspath("xpsservice/XPS_GPR_O1s.pkl")
     },   
 }

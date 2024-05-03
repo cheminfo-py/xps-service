@@ -39,6 +39,7 @@ def rdkit2ase(mol):
 
     return atoms
 
+#MM try remove caching
 def molfile2ase(molfile: str, max_atoms: int = MAX_ATOMS_XTB) -> Atoms:
     try:
         result = conformer_cache.get(molfile)
