@@ -14,6 +14,7 @@ from .utils import smiles2molfile, molfile2smiles
 from .errors import TooLargeError
 from .ir import ir_from_molfile, ir_from_smiles
 from .models import ConformerLibrary, ConformerRequest, IRRequest, IRResult
+from .cache import *
 
 from .xps import *
 from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult, transition_map
@@ -24,6 +25,8 @@ import logging
 
 ALLOWED_HOSTS = ["*"]
 
+load_models_and_descriptors(transition_map)
+#test_model_and_soap_loading(transition_map)
 
 app = FastAPI(
     title="EPFL-ISIC-XRDSAP: XPS webservice",
@@ -33,11 +36,54 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
-# Application startup event
+# Application startup event // seems not working
 @app.on_event("startup")
 async def startup_event():
     # Load ML models and SOAP descriptors into cache
-    load_models_and_descriptors()
+    #load_models_and_descriptors()
+    test_model_and_soap_loading(transition_map)
+    
+
+
+#TEST THE loading at startup of the ml model and soap
+@app.get("/test_model_and_soap_loading_at_startup")
+async def test_loading():
+    # Call the test function
+    test_results = test_model_and_soap_loading_at_startup(transition_map)
+    
+    # Convert the results to a list of dictionaries
+    response = [{"transition": result[0], "result": result[1]} for result in test_results]
+    
+    # Return the results as a JSON response
+    return response
+
+
+@app.get("/check_cache_status")
+def check_cache_status() -> Dict[str, Dict[str, bool]]:
+    """
+    Check the status of the cache for each transition in the transition_map.
+    
+    Returns:
+        A dictionary where the keys are transition keys, and the values are dictionaries
+        indicating the status of each cache (True if loaded, False otherwise).
+    """
+    cache_status = {}
+
+    # Iterate through each transition in the transition_map
+    for transition_key in transition_map:
+        # Check the status of each cache for the transition key
+        soap_config_loaded = transition_key in soap_config_cache
+        soap_descriptor_loaded = transition_key in soap_descriptor_cache
+        model_loaded = transition_key in model_cache
+        
+        # Store the status in the cache_status dictionary
+        cache_status[transition_key] = {
+            "soap_config_loaded": soap_config_loaded,
+            "soap_descriptor_loaded": soap_descriptor_loaded,
+            "model_loaded": model_loaded,
+        }
+    
+    return cache_status
 
 
 def max_atoms_error():

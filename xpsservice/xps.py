@@ -37,53 +37,6 @@ from .utils import (
 )
 
 
-def load_models_and_descriptors():
-    # Iterate through the transition_map and load each model and descriptor
-    for transition_key, transition_info in transition_map.items():
-        soap_key = transition_info["soap_descriptor"]
-        model_key = transition_info["model"]
-
-        # Load SOAP descriptor and model and add to cache
-        soap_descriptor = load_soap_descriptor(transition_info)
-        ml_model = load_ml_model(transition_info)
-
-        # Set cache entries
-        soap_descriptor_cache.set(soap_key, soap_descriptor, expire=None)
-        model_cache.set(model_key, ml_model, expire=None)
-
-#working MM
-#get soap and ML model for a given transition_key, as defined in transition_map from .models.py, i.e C1s
-def get_soap_and_model(transition_key: str):
-    # Validate the transition
-    TransitionValidator(transition = transition_key)
-    
-    # Retrieve the SOAP and model from the mapping
-    transition_info = transition_map[transition_key]
-    
-    # Check the cache for SOAP configuration, construct if not in cache
-    soap_config = soap_config_cache.get(transition_key)
-    if soap_config is None:
-        soap_config = load_soap_config(transition_info)
-        soap_config_cache.set(transition_key, soap_config, expire = None)
-    logging.info(f"soap config for {transition_key} loaded")
-
-    # Check the cache for SOAP descriptor, construct if not in cache
-    soap_descriptor = soap_descriptor_cache.get(transition_key)
-    if soap_descriptor is None:
-        soap_descriptor = Descriptor(soap_config_cache.get(transition_key))
-        soap_descriptor_cache.set(transition_key, soap_descriptor, expire=None)
-    logging.info(f"SOAP descriptor for {transition_key} loaded")
-
-    # Check the cache for ML model, construct if not in cache
-    ml_model = model_cache.get(transition_key)
-    if ml_model is None:
-        ml_model = load_ml_model(transition_info)
-        model_cache.set(transition_key, ml_model, expire = None)
-    logging.info(f"ML model for {transition_key} loaded")
-
-    return soap_config, soap_descriptor, ml_model
-
-
 #working MM
 def load_ml_model(transition_info: Dict[str, Any]) -> Any:
     try:
@@ -121,6 +74,112 @@ def load_soap_config(transition_info):
     return locals()['SOAP']
 
 
+
+def load_models_and_descriptors(transition_map):
+    print("Entered load")
+    
+    for transition_key, transition_info in transition_map.items():
+        try:
+            # Load SOAP config and store in cache
+            soap_config = load_soap_config(transition_info)
+            soap_config_cache.set(transition_key, soap_config, expire=None)
+            logging.info(f"SOAP config for {transition_key} loaded")
+            
+            # Load SOAP descriptor and store in cache
+            soap_descriptor = Descriptor(soap_config)
+            soap_descriptor_cache.set(transition_key, soap_descriptor, expire=None)
+            logging.info(f"SOAP descriptor for {transition_key} loaded")
+            
+            # Load ML model and store in cache
+            ml_model = load_ml_model(transition_info)
+            model_cache.set(transition_key, ml_model, expire=None)
+            logging.info(f"ML model for {transition_key} loaded")
+            
+        except Exception as e:
+            logging.error(f"Error loading data for transition {transition_key}: {str(e)}")
+            continue  # Optionally skip to the next iteration on error
+    
+    # Return None implicitly
+
+
+
+
+#working MM
+def test_model_and_soap_loading_at_startup(transition_map):
+
+    load_models_and_descriptors()
+    print("entered test")
+    # Create a list to store test results
+    test_results = []
+    
+    logging.debug("entered test function for transition_map")
+    
+    # Iterate through all transitions in the transition_map
+    for transition_key, transition_info in transition_map.items():
+        logging.debug(f"entered loop for {transition_info['element']} {transition_info['orbital']}")
+        
+        try:
+            # Load the ML model and SOAP configuration
+            soap_config = soap_config_cache.get(transition_key)
+            soap_descriptor = soap_descriptor_cache(transition_key)
+            model = model_cache.get(transition_key)
+        
+            # Perform some basic checks
+            if soap_config and soap_descriptor and model:
+                # If SOAP config, soap descriptor and ML model are loaded, the test is successful
+                test_results.append((transition_key, "Success"))
+            else:
+                # If either of the 3 is not loaded, the test fails
+                test_results.append((transition_key, "Failure: Either SOAP config, SOAP descriptor or ML model not loaded"))
+        except Exception as e:
+            # Capture any exceptions during loading and mark the test as failed
+            test_results.append((transition_key, f"Failure: {str(e)}"))
+
+    return test_results
+
+
+
+
+
+#working MM
+#get soap and ML model for a given transition_key, as defined in transition_map from .models.py, i.e C1s
+def get_soap_and_model(transition_key: str):
+    # Validate the transition
+    TransitionValidator(transition = transition_key)
+    
+    # Retrieve the SOAP and model from the mapping
+    transition_info = transition_map[transition_key]
+    
+    # Check the cache for SOAP configuration, construct if not in cache
+    soap_config = soap_config_cache.get(transition_key)
+    if soap_config is None:
+        soap_config = load_soap_config(transition_info)
+        soap_config_cache.set(transition_key, soap_config, expire = None)
+        print("set cache soap config")
+    logging.info(f"soap config for {transition_key} loaded")
+
+    # Check the cache for SOAP descriptor, construct if not in cache
+    soap_descriptor = soap_descriptor_cache.get(transition_key)
+    if soap_descriptor is None:
+        soap_descriptor = Descriptor(soap_config_cache.get(transition_key))
+        soap_descriptor_cache.set(transition_key, soap_descriptor, expire=None)
+        print("set cache soap desxcript config")
+    logging.info(f"SOAP descriptor for {transition_key} loaded")
+
+    # Check the cache for ML model, construct if not in cache
+    ml_model = model_cache.get(transition_key)
+    if ml_model is None:
+        ml_model = load_ml_model(transition_info)
+        model_cache.set(transition_key, ml_model, expire = None)
+        print("set cache ml model")
+    logging.info(f"ML model for {transition_key} loaded")
+    
+    return soap_config, soap_descriptor, ml_model
+
+
+
+
+
 #working MM
 def test_model_and_soap_loading(transition_map):
     # Create a list to store test results
@@ -134,9 +193,12 @@ def test_model_and_soap_loading(transition_map):
         try:
             # Load the ML model and SOAP configuration
             soap_config, soap_descriptor, ml_model = get_soap_and_model(transition_key)
+            soap_config_c = soap_config_cache.get(transition_key)
+            soap_descriptor_c = soap_descriptor_cache.get(transition_key)
+            ml_model_c = model_cache.get(transition_key)
         
             # Perform some basic checks
-            if soap_config and soap_descriptor and ml_model:
+            if soap_config_c and soap_descriptor_c and ml_model_c:
                 # If SOAP config, soap descriptor and ML model are loaded, the test is successful
                 test_results.append((transition_key, "Success"))
             else:
@@ -145,7 +207,7 @@ def test_model_and_soap_loading(transition_map):
         except Exception as e:
             # Capture any exceptions during loading and mark the test as failed
             test_results.append((transition_key, f"Failure: {str(e)}"))
-
+        
     return test_results
 
 ###########
@@ -246,15 +308,17 @@ def get_max_atoms(method):
 #################
 
 
-@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
+#@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
 def calculate_from_molfile(molfile, method) -> XPSResult:
     print("entered calculate")
     # Convert molfile to smiles and ASE molecule
     smiles = molfile2smiles(molfile)
     ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
+    
     print("converted molfile to ase")
     if not isinstance(ase_mol, Atoms):
         raise TypeError(f"in calculate_from_molfile, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
+    
     # Optimize the ASE molecule
     opt_ase_mol = run_xtb_opt(ase_mol, method=method)
     print("ran xtb opt")
