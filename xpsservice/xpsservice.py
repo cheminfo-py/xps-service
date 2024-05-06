@@ -12,8 +12,7 @@ from . import __version__
 from .conformers import conformers_from_molfile, conformers_from_smiles
 from .utils import smiles2molfile, molfile2smiles
 from .errors import TooLargeError
-from .ir import ir_from_molfile, ir_from_smiles
-from .models import ConformerLibrary, ConformerRequest, IRRequest, IRResult
+from .models import ConformerLibrary, ConformerRequest
 from .cache import *
 
 from .xps import *
@@ -25,8 +24,8 @@ import logging
 
 ALLOWED_HOSTS = ["*"]
 
+'''The desired transition-map should be defined here'''
 load_models_and_descriptors(transition_map)
-#test_model_and_soap_loading(transition_map)
 
 app = FastAPI(
     title="EPFL-ISIC-XRDSAP: XPS webservice",
@@ -35,6 +34,7 @@ app = FastAPI(
     contact={"name": "Cheminfo", "email": "admin@cheminfo.org",},
     license_info={"name": "MIT"},
 )
+
 
 # Application startup event // seems not working
 @app.on_event("startup")
@@ -60,6 +60,7 @@ async def test_loading():
 
 @app.get("/check_cache_status")
 def check_cache_status() -> Dict[str, Dict[str, bool]]:
+    print("checking cache status")
     """
     Check the status of the cache for each transition in the transition_map.
     
@@ -67,6 +68,7 @@ def check_cache_status() -> Dict[str, Dict[str, bool]]:
         A dictionary where the keys are transition keys, and the values are dictionaries
         indicating the status of each cache (True if loaded, False otherwise).
     """
+    logging.debug("entered check_cache_status")
     cache_status = {}
 
     # Iterate through each transition in the transition_map
@@ -178,47 +180,6 @@ def calculate_binding_energies_endpoint(request: XPSRequest):
     # Return the result
     return result
 
-
-
-
-
-
-
-
-
-
-
-#MM
-@app.post("/xps", response_model=XPSResult)
-@version(1)
-def post_get_xps_spectrum(xpsrequest: XPSRequest):
-    try:
-        if xpsrequest.smiles:
-            xps = xps_from_smiles(xpsrequest.smiles, xpsrequest.method)
-        elif xpsrequest.molFile:
-            xps = xps_from_molfile(xpsrequest.molFile, xpsrequest.method)
-        else:
-            raise HTTPException(
-                status_code=422,
-                detail="You need to provide either `molFile` or `smiles`",
-            )
-    except TooLargeError:
-        raise max_atoms_error()
-    except TimeoutError:
-        raise HTTPException(status_code=500, detail="Calculation timed out.")
-    return {"hello"}
-
-
-@app.get("/xps", response_model=XPSResult)
-@version(1)
-def get_xps_spectrum(smiles: str, method: str = "GFNFF"):
-    try:
-        xps = xps_from_smiles(smiles, method)
-    except TooLargeError:
-        raise max_atoms_error()
-    except TimeoutError:
-        raise HTTPException(status_code=500, detail="Calculation timed out.")
-    return xps
 
 
 @app.post("/conformers", response_model=ConformerLibrary)

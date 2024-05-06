@@ -3,7 +3,7 @@ import os
 
 from diskcache import Cache
 
-CACHE_DIR = os.getenv("CACHEDIR", "ircache")
+CACHE_DIR = os.getenv("CACHEDIR", "xpscache")
 
 # 2 ** 30 = 1 GB
 

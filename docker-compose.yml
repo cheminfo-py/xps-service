@@ -6,13 +6,13 @@ services:
     restart: always
     environment:
       - PORT=${PORT}
-      - CACHEDIR=/ircache
+      - CACHEDIR=/xpscache
       - WORKERS=${WORKERS}
       - OMP_NUM_THREADS=${OMP_NUM_THREADS}
       - MAX_ATOMS_XTB=100
       - MAX_ATOMS_FF=100
       - TIMEOUT=${TIMEOUT}
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=DEBUG
     ports:
       - ${PORT}:${PORT}
     volumes:

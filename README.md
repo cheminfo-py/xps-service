@@ -4,7 +4,7 @@ This is a webservice built using [FastAPI](https://github.com/tiangolo/fastapi).
 
 Allows to:
 
-- Simulate IR spectra given a SMILES string
+- Predict X-ray photoelectron binding energies of C 1s et O 1s, given a SMILES or molFile string
 - Get conformers
 
 ## Usage
