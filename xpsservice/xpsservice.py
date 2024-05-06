@@ -24,8 +24,11 @@ import logging
 
 ALLOWED_HOSTS = ["*"]
 
+
+
 '''The desired transition-map should be defined here'''
 load_models_and_descriptors(transition_map)
+
 
 app = FastAPI(
     title="EPFL-ISIC-XRDSAP: XPS webservice",
@@ -94,7 +97,7 @@ def max_atoms_error():
         detail=f"This services only accepts structures with less than {MAX_ATOMS_FF} atoms for force-field calculations and {MAX_ATOMS_XTB} for xtb calculations.",
     )
 
-# Define the ping route
+
 @app.get("/ping")
 def ping():
     return {"message": "pong"}

@@ -11,11 +11,6 @@ import pickle
 
 from ase import Atoms
 from quippy.descriptors import Descriptor
-#from fastapi.logger import logger
-#from rdkit import Chem
-#from scipy import spatial
-#from xtb.ase.calculator import XTB
-
 
 from .cache import soap_config_cache, soap_descriptor_cache, model_cache
 from .models import *
@@ -109,8 +104,6 @@ def load_models_and_descriptors(transition_map):
             continue  # Optionally skip to the next iteration on error
 
 
-
-
 #working MM
 def test_model_and_soap_loading_at_startup(transition_map):
 
@@ -143,8 +136,6 @@ def test_model_and_soap_loading_at_startup(transition_map):
             test_results.append((transition_key, f"Failure: {str(e)}"))
 
     return test_results
-
-
 
 
 
@@ -215,7 +206,7 @@ def test_model_and_soap_loading(transition_map):
     return test_results
 
 
-###########
+
 def get_max_atoms(method):
     if method == "GFNFF":
         return MAX_ATOMS_FF
@@ -224,10 +215,7 @@ def get_max_atoms(method):
     elif method == "GFN1xTB":
         return MAX_ATOMS_XTB
 
-#################
 
-
-###########
 def calculate_binding_energies(ase_mol: Atoms, transition_key):
     if not isinstance(ase_mol, Atoms):
         raise TypeError(f"in calculate_binding_energies expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
@@ -305,14 +293,14 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
     # Get the data from the descriptor object
     desc_molecule = desc_data['data']
     
-    X_new = []
-    for desc_atom in desc_molecule:
-        X_new.append(desc_atom)
-    be, std = ml_model.predict(X_new, return_std=True)
+    #X_new = []
+    #for desc_atom in desc_molecule:
+    #    X_new.append(desc_atom)
+    #be, std = ml_model.predict(X_new, return_std=True)
     
 
     # Predict binding energies using the ML model
-    #be, std = ml_model.predict(desc_molecule, return_std=True)
+    be, std = ml_model.predict(desc_molecule, return_std=True)
     logging.info(f'Predicted {len(be)} binding energies for element {element}, orbital {orbital}, defined in {transition_key}')
 
     # Return a list of binding energy predictions
@@ -362,7 +350,7 @@ def calculate_from_molfile(molfile, method) -> XPSResult:
         raise TypeError(f"in calculate_from_molfile, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
     
     # Optimize the ASE molecule
-    opt_result = run_xtb_opt(ase_mol, method=method)
+    opt_result = run_xtb_opt(ase_mol, fmax=0.2, method=method)
     opt_ase_mol = opt_result.atoms
     if not isinstance(opt_ase_mol, Atoms):
         raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
