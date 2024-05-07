@@ -27,7 +27,7 @@ ALLOWED_HOSTS = ["*"]
 
 
 '''The desired transition-map should be defined here'''
-load_models_and_descriptors(transition_map)
+#load_models_and_descriptors(transition_map)
 
 
 app = FastAPI(
@@ -37,6 +37,14 @@ app = FastAPI(
     contact={"name": "Cheminfo", "email": "admin@cheminfo.org",},
     license_info={"name": "MIT"},
 )
+
+
+#TEST THE loading at startup of the ml model and soap
+@app.get("/load_cache")
+async def load_cache():
+    # Call the test function
+    load_models_and_descriptors(transition_map)
+
 
 
 # Application startup event // seems not working

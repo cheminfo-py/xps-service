@@ -24,6 +24,11 @@ docker-compose up
 
 ### Customization
 
+You have the possibility to modify the photoemission transition that will be used a base of the prediction. This is done in settings.py. Several transition_maps could be defined, and the one to be used by the API should be loaded in xpsservice.py. Modification include:
+
+-The option to import your own ML_model that should be pickled scikit GPR models
+-The possibility to import your own descriptors which should be SOAP. A utiliy notebook allowing to convert a soap configuration to a saop file that could be further used to calculate the descriptor is saved in /SOAP_config
+
 You have the option to customize the behavior of the app using environment variables:
 
 - `MAX_ATOMS_XTB`: if the input contains more than this number of atoms, an error is thrown

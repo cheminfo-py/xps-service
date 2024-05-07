@@ -47,24 +47,22 @@ def load_soap_config(transition_info):
     if not os.path.exists(soap_filepath):
         raise FileNotFoundError(f"SOAP configuration file not found at path: {soap_filepath}")
     
-    # Read the SOAP configuration file
+    # Load the SOAP configuration from the file
     with open(soap_filepath, 'r') as file:
-        # Read the content of the file and execute it as Python code
-        exec(file.read())
-        
-    # Check if the variable `SOAP` is defined in the file's content
-    if 'SOAP' not in locals():
-        raise ValueError(f"SOAP configuration variable 'SOAP' not defined in the file: {soap_filepath}")
+        soap_config = file.read()
+    
+    if not soap_config:
+        raise ValueError(f"The SOAP configuration file at {soap_filepath} is empty or not valid.")
     
     logging.debug(f"Loaded SOAP config for {transition_info['element']} {transition_info['orbital']}")
-    # Return the SOAP configuration
-    return locals()['SOAP']
 
+    # Return the SOAP configuration
+    return soap_config
 
 
 def load_models_and_descriptors(transition_map):
     print("Entered load")
-
+    
     cutoff = 4.25; dc = 0.5; sigma = 0.5
     zeta = 6
     SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f} \
@@ -80,7 +78,7 @@ def load_models_and_descriptors(transition_map):
         try:
             # Load SOAP config and store in cache
             soap_config = load_soap_config(transition_info)
-            soap_config_cache.set(transition_key, soap_config, expire=None)
+            soap_config_cache.set(transition_key, soap_config)
             logging.debug(f"SOAP config for {transition_key} loaded")
             
             # Load SOAP descriptor and store in cache
@@ -91,12 +89,12 @@ def load_models_and_descriptors(transition_map):
                 soap_descriptor = Descriptor(SOAP["O"])
                 
             #soap_descriptor = Descriptor(soap_config)
-            soap_descriptor_cache.set(transition_key, soap_descriptor, expire=None)
+            soap_descriptor_cache.set(transition_key, soap_descriptor)
             logging.debug(f"SOAP descriptor for {transition_key} loaded")
             
             # Load ML model and store in cache
             ml_model = load_ml_model(transition_info)
-            model_cache.set(transition_key, ml_model, expire=None)
+            model_cache.set(transition_key, ml_model)
             logging.debug(f"ML model for {transition_key} loaded")
             
         except Exception as e:
@@ -238,21 +236,24 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
     if transition_key not in transition_map:
         raise KeyError(f"Transition '{transition_key}' is not a valid transition. Valid transitions are: {list(transition_map.keys())}")
     
-    
-    
     '''here to 
     # Retrieve SOAP descriptor from the cache
     soap_descriptor = soap_descriptor_cache.get(transition_key)
     if soap_descriptor is None:
         logging.error(f"SOAP descriptor not found in cache for transition {transition_key}")
         return []
-
+    
+    
     # Retrieve ML model from the cache
     ml_model = model_cache.get(transition_key)
     if ml_model is None:
         logging.error(f"ML model not found in cache for transition {transition_key}")
         return []
     here replaced by loading directly the models'''
+    
+    #Load ML model and store in cache
+    ml_model = load_ml_model(transition_info)
+    
     
     cutoff = 4.25; dc = 0.5; sigma = 0.5
     zeta = 6
@@ -274,8 +275,8 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
     elif element == "O":
         soap_descriptor = Descriptor(SOAP["O"])
             
-    #Load ML model and store in cache
-    ml_model = load_ml_model(transition_info)
+
+    
     
     ###to here new version
     

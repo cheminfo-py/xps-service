@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY README.md .
 COPY xpsservice ./xpsservice
-COPY xpscache ./xpscache
+#COPY xpscache ./xpscache
 COPY SOAP_configs ./SOAP_configs
 COPY ML_models ./ML_models
 
