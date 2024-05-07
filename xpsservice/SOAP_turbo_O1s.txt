@@ -1,7 +1,0 @@
-#O1s soap
-cutoff = 4.25; dc = 0.5; sigma = 0.5
-zeta = 6
-SOAP = '''soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=%.4f rcut_hard=%.4f atom_sigma_r={%.4f %.4f %.4f} atom_sigma_t={%.4f %.4f %.4f}
-atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.}
-basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.}
-compress_mode=trivial''' % (cutoff-dc, cutoff, *(6*[sigma]))
