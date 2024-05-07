@@ -16,9 +16,9 @@ from .models import ConformerLibrary, ConformerRequest
 from .cache import *
 
 from .xps import *
-from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult, transition_map
+from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult
 
-from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB
+from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB, transition_map
 
 import logging
 

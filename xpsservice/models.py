@@ -9,7 +9,7 @@ from ase import Atoms
 from pydantic import BaseModel, Field, validator
 from rdkit import Chem
 
-from .settings import *
+from .settings import ALLOWED_FMAX, ALLOWED_ELEMENTS, ALLOWED_FF, ALLOWED_METHODS, transition_map
 
 
 #MM, bug: Not sure to be needed
@@ -21,73 +21,7 @@ class TransitionValidator(BaseModel):
         if value not in transition_map:
             raise ValueError(f"Transition {value} is not allowed.")
         return value
-
-
-@dataclass
-class OptimizationResult:
-    atoms: Atoms
-    forces: np.ndarray
-    energy: float
-
-
-class ConformerRequest(BaseModel):
-    smiles: Optional[str] = Field(
-        None,
-        description="SMILES string of input molecule. The service will add implicit hydrogens",
-    )
-    molFile: Optional[str] = Field(
-        None,
-        description="String with molfile with expanded hydrogens. The service will not attempt to add implicit hydrogens to ensure that the atom ordering is preserved.",
-    )
-    forceField: Optional[str] = Field(
-        "uff",
-        description="String with method force field that is used for energy minimization. Options are 'uff', 'mmff94', and 'mmff94s'",
-    )
-    rmsdThreshold: Optional[float] = Field(
-        0.5, description="RMSD threshold that is used to prune conformer library."
-    )
-    maxConformers: Optional[int] = Field(
-        1,
-        description="Maximum number of conformers that are generated (after pruning).",
-    )
-
-    @validator("forceField")
-    def method_match(cls, v):
-        if not v in ALLOWED_FF:
-            raise ValueError(f"forceField must be in {ALLOWED_FF}")
-        return v
-
-
-class Conformer(BaseModel):
-    molFile: str = Field(
-        None, description="String with molfile.",
-    )
-    energy: str = Field(
-        None, description="Final energy after energy minimization.",
-    )
-
-
-class ConformerLibrary(BaseModel):
-    conformers: List[Conformer]
-
-
-#MM
-#bug: add smiles and molfile
-class XPSResult(BaseModel):
-    molfile: str = Field(
-        None, description = "Molfile (calculated or gived) used for the binding energy prediction"
-    )
-    smiles: Optional[str] = Field(
-        None, description = "SMILES (if given) used for the binding energy prediction"
-    )
-    bindingEnergies: List[float] = Field(
-        None, description="List of binding energies in eV"
-    )
-    standardDeviations: List[float] = Field(
-        None, description="List of standard deviations of the binding energies in eV"
-    )
     
-
 
 
 # XPSRequest class supports accepting either a smiles string or a molFile string.
@@ -145,11 +79,81 @@ class XPSRequest(BaseModel):
             raise ValueError(f"Method must be in {ALLOWED_METHODS}")
         return v
     
-    # Validator for the method field to ensure the method is within the allowed list of methods
+    # Validator for the fmax field to ensure the value is within the allowed range
     @validator("fmax")
-    def validate_method(cls, v):
-        if v not in ALLOWED_FMAX:
-            raise ValueError(f"Method must be in {ALLOWED_METHODS}")
+    def validate_fmax(cls, v):
+        if not (ALLOWED_FMAX[0] <= v <= ALLOWED_FMAX[1]):
+            raise ValueError(f"fmax must be within the range {ALLOWED_FMAX}")
         return v
+
+#MM
+#bug: add smiles and molfile
+class XPSResult(BaseModel):
+    molfile: str = Field(
+        None, description = "Molfile (calculated or gived) used for the binding energy prediction"
+    )
+    smiles: Optional[str] = Field(
+        None, description = "SMILES (if given) used for the binding energy prediction"
+    )
+    bindingEnergies: List[float] = Field(
+        None, description="List of binding energies in eV"
+    )
+    standardDeviations: List[float] = Field(
+        None, description="List of standard deviations of the binding energies in eV"
+    )
+
+
+@dataclass
+class OptimizationResult:
+    atoms: Atoms
+    forces: np.ndarray
+    energy: float
+
+
+class ConformerRequest(BaseModel):
+    smiles: Optional[str] = Field(
+        None,
+        description="SMILES string of input molecule. The service will add implicit hydrogens",
+    )
+    molFile: Optional[str] = Field(
+        None,
+        description="String with molfile with expanded hydrogens. The service will not attempt to add implicit hydrogens to ensure that the atom ordering is preserved.",
+    )
+    forceField: Optional[str] = Field(
+        "uff",
+        description="String with method force field that is used for energy minimization. Options are 'uff', 'mmff94', and 'mmff94s'",
+    )
+    rmsdThreshold: Optional[float] = Field(
+        0.5, description="RMSD threshold that is used to prune conformer library."
+    )
+    maxConformers: Optional[int] = Field(
+        1,
+        description="Maximum number of conformers that are generated (after pruning).",
+    )
+
+    @validator("forceField")
+    def method_match(cls, v):
+        if not v in ALLOWED_FF:
+            raise ValueError(f"forceField must be in {ALLOWED_FF}")
+        return v
+
+
+class Conformer(BaseModel):
+    molFile: str = Field(
+        None, description="String with molfile.",
+    )
+    energy: str = Field(
+        None, description="Final energy after energy minimization.",
+    )
+
+
+class ConformerLibrary(BaseModel):
+    conformers: List[Conformer]
+
+
+
+    
+
+
 
     

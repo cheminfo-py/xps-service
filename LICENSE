@@ -1,6 +1,9 @@
 MIT License
 
-Copyright (c) 2021 Kevin Jablonka
+Copyright (c) 2024 Antonio Miranda, Joren Van Herck, Kevin Jablonka and Mounir Mensi
+
+The present work is based on the xtb-service from Kevin Jablonka:
+[xtb-service](https://github.com/cheminfo-py/xtb-service)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

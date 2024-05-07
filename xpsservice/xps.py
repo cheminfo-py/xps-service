@@ -15,7 +15,7 @@ from quippy.descriptors import Descriptor
 from .cache import soap_config_cache, soap_descriptor_cache, model_cache
 from .models import *
 from .optimize import run_xtb_opt
-from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB, TIMEOUT
+from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB, TIMEOUT, transition_map
 from .utils import (
     hash_atoms,
     hash_object,
