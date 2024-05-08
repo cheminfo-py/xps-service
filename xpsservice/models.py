@@ -86,8 +86,7 @@ class XPSRequest(BaseModel):
             raise ValueError(f"fmax must be within the range {ALLOWED_FMAX}")
         return v
 
-#MM
-#bug: add smiles and molfile
+
 class XPSResult(BaseModel):
     molfile: str = Field(
         None, description = "Molfile (calculated or gived) used for the binding energy prediction"

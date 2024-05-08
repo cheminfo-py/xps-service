@@ -24,79 +24,82 @@ import logging
 
 ALLOWED_HOSTS = ["*"]
 
-
-
 '''The desired transition-map should be defined here'''
-#load_models_and_descriptors(transition_map)
+selected_transition_map = transition_map
+
+#Initial loading
+#load_models_and_descriptors(selected_transition_map)
 
 
 app = FastAPI(
     title="EPFL-ISIC-XRDSAP: XPS webservice",
-    description="Offers XPS binding energy prediction tool, based on GW simulation, and a Gaussian process ML model. Allowed elements/orbitals to be predicted are `C1s` and `O1s`. Hydrogens are taken into account but not predicted. Allowed methods for molecular geometry optimization are `GFNFF`, `GFN2xTB`, `GFN1xTB`",
+    description="Offers XPS binding energy prediction tool, based on simulation, and a Gaussian process ML model. Allowed elements/orbitals to be predicted are `C1s` and `O1s`. Hydrogens are taken into account but not predicted. Allowed methods for molecular geometry optimization are `GFNFF`, `GFN2xTB`, `GFN1xTB`",
     version=__version__,
     contact={"name": "Cheminfo", "email": "admin@cheminfo.org",},
     license_info={"name": "MIT"},
 )
 
 
-#TEST THE loading at startup of the ml model and soap
-@app.get("/load_cache")
-async def load_cache():
-    # Call the test function
-    load_models_and_descriptors(transition_map)
+#ping
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
+#load models and descriptors
+@app.get("/get_soap_config")
+async def get_soap_config_endpoint() -> str:
+    mylist = []
+    print(f"Type of selected_transition_map: {type(selected_transition_map)}")
+    print(f"Contents of selected_transition_map: {selected_transition_map}")
+
+    # Iterate through `selected_transition_map`
+    for transition_key, transition_info in selected_transition_map.items():
+        # Add debugging statements
+        print(f"Transition key: {transition_key}")
+        print(f"Transition info: {transition_info}")
+
+        # Load SOAP config
+        mylist.append(load_soap_config(transition_info))
+
+    return str(mylist)
 
 
-
-# Application startup event // seems not working
-@app.on_event("startup")
-async def startup_event():
-    # Load ML models and SOAP descriptors into cache
-    #load_models_and_descriptors()
-    test_model_and_soap_loading(transition_map)
-    
-
-
-#TEST THE loading at startup of the ml model and soap
-@app.get("/test_model_and_soap_loading_at_startup")
-async def test_loading():
-    # Call the test function
-    test_results = test_model_and_soap_loading_at_startup(transition_map)
-    
-    # Convert the results to a list of dictionaries
-    response = [{"transition": result[0], "result": result[1]} for result in test_results]
-    
-    # Return the results as a JSON response
-    return response
-
-
-@app.get("/check_cache_status")
-def check_cache_status() -> Dict[str, Dict[str, bool]]:
-    print("checking cache status")
-    """
-    Check the status of the cache for each transition in the transition_map.
-    
-    Returns:
-        A dictionary where the keys are transition keys, and the values are dictionaries
-        indicating the status of each cache (True if loaded, False otherwise).
-    """
-    logging.debug("entered check_cache_status")
-    cache_status = {}
-
-    # Iterate through each transition in the transition_map
-    for transition_key in transition_map:
-        # Check the status of each cache for the transition key
-        soap_config_loaded = transition_key in soap_config_cache
-        soap_descriptor_loaded = transition_key in soap_descriptor_cache
-        model_loaded = transition_key in model_cache
+@app.get("/compare_soap_config")
+async def compare_soap_config_endpoint() -> bool:
+    mylist = []
+    # Iterate through `selected_transition_map`
+    for transition_key, transition_info in selected_transition_map.items():
         
-        # Store the status in the cache_status dictionary
-        cache_status[transition_key] = {
-            "soap_config_loaded": soap_config_loaded,
-            "soap_descriptor_loaded": soap_descriptor_loaded,
-            "model_loaded": model_loaded,
-        }
+        # Load SOAP config
+        mylist.append(load_soap_config(transition_info))
+        mylist.append(soap_config_cache.get(transition_key))
     
-    return cache_status
+
+    return str(mylist)
+        
+
+
+#load models and descriptors
+@app.get("/load_models_and_descriptors")
+async def load_models_and_descriptors_endpoint() -> bool:
+    # Call the test function
+    load_models_and_descriptors(selected_transition_map)
+     
+     # Get the cache status from the function
+    cache_status = check_cache_status(selected_transition_map)
+
+    # Check if any cache failure exists
+    result = not has_any_cache_failure(cache_status)
+        
+    return {"Loading successful:": result }
+    
+
+#Check the status of the cache / might have a mistake
+@app.get("/check_cache_status")
+def check_cache() -> Dict[str, Dict[str, bool]]:
+    result = check_cache_status(selected_transition_map)
+    return result
+
 
 
 def max_atoms_error():
@@ -106,63 +109,18 @@ def max_atoms_error():
     )
 
 
-@app.get("/ping")
-def ping():
-    return {"message": "pong"}
 
-
-@app.get("/app_version")
-@version(1)
-def read_version():
-    return {"app_version": __version__}
-
-
-#TEST THE loading of the ml model and soap
-@app.get("/test_model_and_soap_loading")
-async def test_loading():
-    # Call the test function
-    test_results = test_model_and_soap_loading(transition_map)
+# Predicts the binding energies
+@app.post("/predict_binding_energies", response_model=XPSResult)
+def predict_binding_energies_endpoint(request: XPSRequest):
     
-    # Convert the results to a list of dictionaries
-    response = [{"transition": result[0], "result": result[1]} for result in test_results]
-    
-    # Return the results as a JSON response
-    return response
+    # Get the cache status from the function
+    cache_status = check_cache_status(selected_transition_map)
 
-
-@app.post("/calculate")
-async def calculate(request: XPSRequest):
-    # Extract SMILES and molFile from the request
-    logging.debug("ENTERED Calculate")
-    smiles = request.smiles
-    molFile = request.molFile
-    logging.debug("loaded")
-
-    # Perform conversions based on the provided input
-    if smiles and not molFile:
-        logging.debug("if smiles")
-        # Convert SMILES to molFile using your function
-        molFile = smiles2molfile(smiles)
-        logging.debug("smiles conversion")
-    elif molFile and not smiles:
-        # Convert molFile to SMILES using your function
-        smiles = molfile2smiles(molFile)
-    elif not smiles and not molFile:
-        raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
-
-    # Perform your logic using the converted data (smiles and molFile)
-
-    # For example, call your calculate_from_molfile function
-    #result = calculate_from_molfile(molFile, request.method, hash(smiles))
-
-    # Return the result
-    #return {"result": result}
-    return {"result smiles": smiles, "result molFile": molFile}
-
-
-# Define the POST endpoint
-@app.post("/calculate_binding_energies", response_model=XPSResult)
-def calculate_binding_energies_endpoint(request: XPSRequest):
+    # Check if any cache failure exists
+    if has_any_cache_failure(cache_status) == True:
+        load_models_and_descriptors(selected_transition_map)
+       
     # Extract the input data
     smiles = request.smiles
     molfile = request.molFile
@@ -180,8 +138,7 @@ def calculate_binding_energies_endpoint(request: XPSRequest):
         smiles = molfile2smiles(molfile)
     elif not smiles and not molfile:
         raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
-    
-    print("performed conversion to smiles/molfile")
+    print("converted format")
     # Perform calculations
     try:
         result = calculate_from_molfile(molfile, method)
@@ -193,34 +150,13 @@ def calculate_binding_energies_endpoint(request: XPSRequest):
 
 
 
-@app.post("/conformers", response_model=ConformerLibrary)
+
+
+#checks version
+@app.get("/app_version")
 @version(1)
-def post_conformers(conformerrequest: ConformerRequest):
-    try:
-        if conformerrequest.smiles:
-            conformers = conformers_from_smiles(
-                conformerrequest.smiles,
-                conformerrequest.forceField,
-                conformerrequest.rmsdThreshold,
-                conformerrequest.maxConformers,
-            )
-        elif conformerrequest.molFile:
-            conformers = conformers_from_molfile(
-                conformerrequest.molFile,
-                conformerrequest.forceField,
-                conformerrequest.rmsdThreshold,
-                conformerrequest.maxConformers,
-            )
-        else:
-            raise HTTPException(
-                status_code=422,
-                detail="You need to provide either `molFile` or `smiles`",
-            )
-    except TooLargeError:
-        raise max_atoms_error()
-    except TimeoutError:
-        raise HTTPException(status_code=500, detail="Calculation timed out.")
-    return conformers
+def read_version():
+    return {"app_version": __version__}
 
 
 app = VersionedFastAPI(
