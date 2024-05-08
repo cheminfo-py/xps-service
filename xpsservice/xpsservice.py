@@ -72,7 +72,8 @@ async def compare_soap_config_endpoint() -> bool:
         
         # Load SOAP config
         mylist.append(load_soap_config(transition_info))
-        mylist.append(soap_config_cache.get(transition_key))
+        hashed_key = cache_hash(transition_key, "soap_config_cache")
+        mylist.append(soap_config_cache.get(hashed_key))
     
 
     return str(mylist)

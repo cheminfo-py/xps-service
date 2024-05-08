@@ -64,28 +64,31 @@ def load_soap_config(transition_info):
 def load_models_and_descriptors(transition_map):
     print("Entered load")
     
-    soap_config_cache.clear()
-    soap_descriptor_cache.clear()
-    model_cache.clear()
+    #soap_config_cache.clear()
+    #soap_descriptor_cache.clear()
+    #model_cache.clear()
     
     for transition_key, transition_info in transition_map.items():
         try:
-
-            
-            # Create SOAP descriptor from soap_config and store in cache
-            #soap_descriptor = Descriptor(soap_config)    
-            #soap_descriptor_cache.set(transition_key, soap_descriptor)
-            #logging.debug(f"SOAP descriptor for {transition_key} loaded")
-            
-            # Load ML model and store in cache
-            ml_model = load_ml_model(transition_info)
-            model_cache.set(transition_key, ml_model)
-            logging.debug(f"ML model for {transition_key} loaded")
             
             # Load SOAP config and store in cache
             soap_config = load_soap_config(transition_info)
-            soap_config_cache.set(transition_key, soap_config)
+            soap_config_hashed_key = cache_hash(transition_key, "soap_config_cache")
+            print(soap_config_hashed_key)
+            soap_config_cache.set(soap_config_hashed_key, soap_config)
             logging.debug(f"SOAP config for {transition_key} loaded")
+            
+            # Create SOAP descriptor from soap_config and store in cache
+            soap_descriptor = Descriptor(soap_config)    
+            soap_descriptor_hashed_key = cache_hash(transition_key, "soap_descriptor_cache")
+            soap_descriptor_cache.set(soap_descriptor_hashed_key, soap_descriptor)
+            logging.debug(f"SOAP descriptor for {transition_key} loaded")
+            
+            # Load ML model and store in cache
+            ml_model = load_ml_model(transition_info)
+            ml_model_hashed_key = cache_hash(transition_key, "ml_model_cache")
+            model_cache.set(ml_model_hashed_key, ml_model)
+            logging.debug(f"ML model for {transition_key} loaded")
             
         except Exception as e:
             logging.error(f"Error loading data for transition {transition_key}: {str(e)}")
@@ -107,9 +110,9 @@ def check_cache_status(transition_map) -> Dict[str, Dict[str, bool]]:
     # Iterate through each transition in the transition_map
     for transition_key in transition_map:
         # Check the status of each cache for the transition key
-        soap_config_loaded = transition_key in soap_config_cache
-        soap_descriptor_loaded = transition_key in soap_descriptor_cache
-        model_loaded = transition_key in model_cache
+        soap_config_loaded = cache_hash(transition_key, "soap_config_cache") in soap_config_cache
+        soap_descriptor_loaded = cache_hash(transition_key, "soap_descriptor_cache") in soap_descriptor_cache
+        model_loaded = cache_hash(transition_key, "ml_model_cache") in model_cache
         
         # Store the status in the cache_status dictionary
         cache_status[transition_key] = {
@@ -168,29 +171,34 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
     if transition_key not in transition_map:
         raise KeyError(f"Transition '{transition_key}' is not a valid transition. Valid transitions are: {list(transition_map.keys())}")
     
+    '''
+    # Retrieve SOAP descriptor from the cache
+    soap_descriptor_hashed_key = cache_hash(transition_key, "soap_descriptor_cache")
+    soap_descriptor = soap_descriptor_cache.get(soap_descriptor_hashed_key)
+    if soap_descriptor is None:
+        logging.error(f"SOAP descriptor not found in cache for transition {transition_key}")
+        return []
+    '''
     
     # Retrieve ML model from the cache
-    ml_model = model_cache.get(transition_key)
+    model_hashed_key = cache_hash(transition_key, "ml_model_cache")
+    ml_model = model_cache.get(model_hashed_key)
     if ml_model is None:
         logging.error(f"ML model not found in cache for transition {transition_key}")
         return []
     
     '''
     # Retrieve SOAP descriptor from the cache
-    print("before soap_config")
-    soap_config = soap_config_cache.get(transition_key)
+    soap_config_hashed_key = cache_hash(transition_key, "soap_config_cache")
+    soap_config = soap_config_cache.get(soap_config_hashed_key)
     print("after soap_config")
     print(soap_config)
     soap_descriptor = Descriptor(soap_config)
     print("after soap_descriptor")
-    '''
     
-    # Retrieve SOAP descriptor from the cache
-    soap_descriptor = soap_descriptor_cache.get(transition_key)
-    print(soap_descriptor)
-    if soap_descriptor is None:
-        logging.error(f"SOAP descriptor not found in cache for transition {transition_key}")
-        return []
+    
+
+
     
     SOAP = {"C": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=3.7500 rcut_hard=4.2500 atom_sigma_r={0.5000 0.5000 0.5000} atom_sigma_t={0.5000 0.5000 0.5000}               atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.}               basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=2 central_weight={1. 1. 1.}               compress_mode=trivial',
     "O": 'soap_turbo alpha_max={8 8 8} l_max=8 rcut_soft=3.7500 rcut_hard=4.2500 atom_sigma_r={0.5000 0.5000 0.5000} atom_sigma_t={0.5000 0.5000 0.5000}               atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.}               basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.}               compress_mode=trivial'
@@ -207,7 +215,6 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
                atom_sigma_r_scaling={0. 0. 0.} atom_sigma_t_scaling={0. 0. 0.} radial_enhancement=1 amplitude_scaling={1. 1. 1.} \
                basis="poly3gauss" scaling_mode="polynomial" species_Z={1 6 8} n_species=3 central_index=3 central_weight={1. 1. 1.} \
                compress_mode=trivial' % (cutoff-dc, cutoff, *(6*[sigma]))}
-    '''
     
     
     # new version from here
@@ -218,8 +225,9 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
                 
     elif element == "O":
         soap_descriptor = Descriptor(SOAP["O"])
-    # replaced by loading directly the models'''     
-
+    # replaced by loading directly the models
+    
+    
     # Calculate the SOAP descriptor for the molecule
     desc_data = soap_descriptor.calc(ase_mol)
 
@@ -313,7 +321,9 @@ def calculate_from_molfile(molfile, method) -> XPSResult:
 def ir_hash(atoms, method):
     return hash_object(str(hash_atoms(atoms)) + method)
 
+#returns a hash to be used in for the cache
 def cache_hash(transition_key, cache_type):
+    
     # Concatenate the transition key and cache type
     input_string = transition_key + cache_type
     
