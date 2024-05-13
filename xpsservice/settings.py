@@ -23,14 +23,18 @@ transition_map = {
         "element": "C",
         "orbital": "1s",
         "soap_filepath": os.path.abspath("SOAP_configs/soap_config_C1s.txt"),
+        "soap_pkl_filepath": os.path.abspath("SOAP_configs/soap_config_C1s.pkl"),
+        "soap_descriptor_filepath": os.path.abspath("SOAP_configs/soap_descriptor_C1s.pkl"),
         "model_filepath": os.path.abspath("ML_models/XPS_GPR_C1s_xtb.pkl")
     },
     "O1s": {
         "element": "O",
         "orbital": "1s",
         "soap_filepath": os.path.abspath("SOAP_configs/soap_config_O1s.txt"),
+        "soap_pkl_filepath": os.path.abspath("SOAP_configs/soap_config_O1s.pkl"),
+        "soap_descriptor_filepath": os.path.abspath("SOAP_configs/soap_descriptor_O1s.pkl"),
         "model_filepath": os.path.abspath("ML_models/XPS_GPR_O1s_xtb.pkl")
-    },   
+    }
 }
 
 
