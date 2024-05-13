@@ -28,7 +28,7 @@ ALLOWED_HOSTS = ["*"]
 selected_transition_map = transition_map
 
 #Initial loading
-#load_models_and_descriptors(selected_transition_map)
+load_soap_configs_and_models(selected_transition_map)
 
 
 app = FastAPI(
@@ -45,46 +45,12 @@ app = FastAPI(
 def ping():
     return {"message": "pong"}
 
-#load models and descriptors
-@app.get("/get_soap_config")
-async def get_soap_config_endpoint() -> str:
-    mylist = []
-    print(f"Type of selected_transition_map: {type(selected_transition_map)}")
-    print(f"Contents of selected_transition_map: {selected_transition_map}")
-
-    # Iterate through `selected_transition_map`
-    for transition_key, transition_info in selected_transition_map.items():
-        # Add debugging statements
-        print(f"Transition key: {transition_key}")
-        print(f"Transition info: {transition_info}")
-
-        # Load SOAP config
-        mylist.append(load_soap_config(transition_info))
-
-    return str(mylist)
-
-
-@app.get("/compare_soap_config")
-async def compare_soap_config_endpoint() -> bool:
-    mylist = []
-    # Iterate through `selected_transition_map`
-    for transition_key, transition_info in selected_transition_map.items():
-        
-        # Load SOAP config
-        mylist.append(load_soap_config(transition_info))
-        hashed_key = cache_hash(transition_key, "soap_config_cache")
-        mylist.append(soap_config_cache.get(hashed_key))
-    
-
-    return str(mylist)
-        
-
 
 #load models and descriptors
-@app.get("/load_models_and_descriptors")
-async def load_models_and_descriptors_endpoint() -> bool:
+@app.get("/load_soap_configs_and_models")
+async def load_soap_configs_and_models_endpoint() -> bool:
     # Call the test function
-    load_models_and_descriptors(selected_transition_map)
+    load_soap_configs_and_models(selected_transition_map)
      
      # Get the cache status from the function
     cache_status = check_cache_status(selected_transition_map)
@@ -110,23 +76,20 @@ def max_atoms_error():
     )
 
 
-
 # Predicts the binding energies
 @app.post("/predict_binding_energies", response_model=XPSResult)
 def predict_binding_energies_endpoint(request: XPSRequest):
     
-    # Get the cache status from the function
+    # Get the cache status from the function and optionnaly relaod
     cache_status = check_cache_status(selected_transition_map)
-
-    # Check if any cache failure exists
     if has_any_cache_failure(cache_status) == True:
-        load_models_and_descriptors(selected_transition_map)
+        load_soap_configs_and_models(selected_transition_map)
        
     # Extract the input data
     smiles = request.smiles
     molfile = request.molFile
     method = request.method
-    print("loaded XPSRequest")
+    fmax = request.fmax
     
     # Perform conversions to molfile based on the provided input
     if smiles and not molfile:
@@ -142,15 +105,12 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     print("converted format")
     # Perform calculations
     try:
-        result = calculate_from_molfile(molfile, method)
+        result = calculate_from_molfile(molfile, method, fmax)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # Return the result
     return result
-
-
-
 
 
 #checks version

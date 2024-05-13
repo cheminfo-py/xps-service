@@ -16,23 +16,23 @@ MAX_ATOMS_XTB = int(os.getenv("MAX_ATOMS_XTB", 100))
 ALLOWED_FMAX = (0.000001, 0.1)
 
 
+#timeout for the overall calculation
+TIMEOUT = int(os.getenv("TIMEOUT", 100))
+
+
 # Define transition_map dictionary(list of orbitals for which a photoelectron emission is calculated)
 # Several maps possible. Adjust which one to load in xpsservice
 transition_map = {
     "C1s": {
         "element": "C",
         "orbital": "1s",
-        "soap_filepath": os.path.abspath("SOAP_configs/soap_config_C1s.txt"),
-        "soap_pkl_filepath": os.path.abspath("SOAP_configs/soap_config_C1s.pkl"),
-        "soap_descriptor_filepath": os.path.abspath("SOAP_configs/soap_descriptor_C1s.pkl"),
+        "soap_config_filepath": os.path.abspath("SOAP_configs/soap_config_C1s.pkl"),
         "model_filepath": os.path.abspath("ML_models/XPS_GPR_C1s_xtb.pkl")
     },
     "O1s": {
         "element": "O",
         "orbital": "1s",
-        "soap_filepath": os.path.abspath("SOAP_configs/soap_config_O1s.txt"),
-        "soap_pkl_filepath": os.path.abspath("SOAP_configs/soap_config_O1s.pkl"),
-        "soap_descriptor_filepath": os.path.abspath("SOAP_configs/soap_descriptor_O1s.pkl"),
+        "soap_config_filepath": os.path.abspath("SOAP_configs/soap_config_O1s.pkl"),
         "model_filepath": os.path.abspath("ML_models/XPS_GPR_O1s_xtb.pkl")
     }
 }
@@ -46,10 +46,6 @@ def derive_allowed_elements(transition_map: dict) -> Set[str]:
 
 #From transition map
 ALLOWED_ELEMENTS = derive_allowed_elements(transition_map)
-
-
-#timeout for the overall calculation
-TIMEOUT = int(os.getenv("TIMEOUT", 100))
 
 
 logger.info(

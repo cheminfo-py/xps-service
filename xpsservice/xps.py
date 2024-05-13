@@ -16,16 +16,15 @@ from quippy.descriptors import Descriptor
 from .cache import soap_config_cache, model_cache
 from .models import *
 from .optimize import run_xtb_opt
-from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB, TIMEOUT, transition_map
+from .settings import MAX_ATOMS_XTB, MAX_ATOMS_FF, TIMEOUT, transition_map
 from .utils import (
-    hash_atoms,
-    hash_object,
+    cache_hash,
     molfile2ase,
     molfile2smiles
 )
 
 
-#working MM
+
 def load_ml_model(transition_info):
     try:
         model_filepath = transition_info['model_filepath']
@@ -37,25 +36,11 @@ def load_ml_model(transition_info):
         raise FileNotFoundError(f"Model file not found at {model_filepath}.")
     except pickle.UnpicklingError as e:
         raise RuntimeError(f"Failed to load model file {model_filepath}: {str(e)}")
-    
-'''
-#working MM / probably to deprec
-def load_soap_descriptor(transition_info):
-    try:
-        soap_descriptor_filepath = transition_info['soap_descriptor_filepath']
-        with open(soap_descriptor_filepath, 'rb') as soap_descriptor_file:
-            soap_descriptor = pickle.load(soap_descriptor_file)
-        logging.debug(f"Loaded ML model for {transition_info['element']} {transition_info['orbital']}")
-        return soap_descriptor
-    except FileNotFoundError:
-        raise FileNotFoundError(f"SOAP descriptor not found at {soap_descriptor_filepath}.")
-    except pickle.UnpicklingError as e:
-        raise RuntimeError(f"Failed to load model file {soap_descriptor_filepath}: {str(e)}")
-'''
 
-def load_soap_config_from_pkl(transition_info):
+
+def load_soap_config(transition_info):
     try:
-        soap_config_filepath = transition_info['soap_pkl_filepath']
+        soap_config_filepath = transition_info['soap_config_filepath']
         with open(soap_config_filepath, 'rb') as soap_config_file:
             soap_config = pickle.load(soap_config_file)
         logging.debug(f"Loaded ML model for {transition_info['element']} {transition_info['orbital']}")
@@ -66,18 +51,16 @@ def load_soap_config_from_pkl(transition_info):
         raise RuntimeError(f"Failed to load model file {soap_config_filepath}: {str(e)}")
 
 
-def load_models_and_descriptors(transition_map):
-    print("Entered load")
-    
+def load_soap_configs_and_models(transition_map):
+    #clear old cache    
     soap_config_cache.clear()
-    #soap_descriptor_cache.clear()
     model_cache.clear()
     
     for transition_key, transition_info in transition_map.items():
         try:
             
             # Load SOAP config and store in cache
-            soap_config = load_soap_config_from_pkl(transition_info)
+            soap_config = load_soap_config(transition_info)
             soap_config_hashed_key = cache_hash(transition_key, "soap_config_cache")
             print(soap_config_hashed_key)
             soap_config_cache.set(soap_config_hashed_key, soap_config)
@@ -95,15 +78,6 @@ def load_models_and_descriptors(transition_map):
 
 
 def check_cache_status(transition_map) -> Dict[str, Dict[str, bool]]:
-    print("checking cache status")
-    """
-    Check the status of the cache for each transition in the transition_map.
-    
-    Returns:
-        A dictionary where the keys are transition keys, and the values are dictionaries
-        indicating the status of each cache (True if loaded, False otherwise).
-    """
-    logging.debug("entered check_cache_status")
     cache_status = {}
 
     # Iterate through each transition in the transition_map
@@ -122,9 +96,6 @@ def check_cache_status(transition_map) -> Dict[str, Dict[str, bool]]:
 
 
 def has_any_cache_failure(cache_status: Dict[str, Dict[str, bool]]) -> bool:
-    """
-    Check if any of the cache status values are False in the given cache_status dictionary.
-    """
     # Iterate through each transition and check each status
     for transition_key, status_dict in cache_status.items():
         for status_name, status_value in status_dict.items():
@@ -235,14 +206,14 @@ def run_xps_calculations(ase_mol: Atoms) -> dict:
 
 
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
-def calculate_from_molfile(molfile, method) -> XPSResult:
+def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
 
     # Convert molfile to smiles and ASE molecule
     smiles = molfile2smiles(molfile)
     ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
     
     # Optimize the ASE molecule
-    opt_result = run_xtb_opt(ase_mol, fmax=0.1, method=method)
+    opt_result = run_xtb_opt(ase_mol, fmax=fmax, method=method)
     opt_ase_mol = opt_result.atoms
     if not isinstance(opt_ase_mol, Atoms):
         raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
@@ -269,23 +240,3 @@ def calculate_from_molfile(molfile, method) -> XPSResult:
     return xps_result
 
 
-
-
-##################################
-##################################
-def ir_hash(atoms, method):
-    return hash_object(str(hash_atoms(atoms)) + method)
-
-#returns a hash to be used in for the cache
-def cache_hash(transition_key, cache_type):
-    
-    # Concatenate the transition key and cache type
-    input_string = transition_key + cache_type
-    
-    # Hash the combined string using SHA-256
-    hash_object = hashlib.sha256(input_string.encode('utf-8'))
-    
-    # Convert the hash to a hexadecimal string
-    hashed_key = hash_object.hexdigest()
-    
-    return hashed_key

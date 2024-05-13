@@ -17,11 +17,19 @@ def hash_object(objec):
     return hashlib.md5(str(objec).encode("utf-8")).hexdigest()
 
 
-#def get_atoms(molfile:str) -> list:
-#    included = list(set([e for e in atoms.symbols if e in list(SOAP.keys())]))
-#    atoms = molfile_to_xyz(molfile)
-#    excluded = list(set([e for e in atoms.symbols if e not in list(SOAP.keys())]))
-#    return included, excluded
+#returns a hash to be used in for the cache
+def cache_hash(transition_key, cache_type):
+    
+    # Concatenate the transition key and cache type
+    input_string = transition_key + cache_type
+    
+    # Hash the combined string using SHA-256
+    hash_object = hashlib.sha256(input_string.encode('utf-8'))
+    
+    # Convert the hash to a hexadecimal string
+    hashed_key = hash_object.hexdigest()
+    
+    return hashed_key
 
 
 def check_max_atoms(mol, max_atoms):
