@@ -3,12 +3,12 @@
     "commit": "381c11be121f7691e3bda5bd116a32ea36794d89",
     "context": {
         "cookiecutter": {
-            "project_name": "xtb-service",
-            "repo_name": "xtb-service",
-            "first_module_name": "xtb-service",
-            "author_name": "Kevin Jablonka",
-            "author_email": "kevin.jablonka@epfl.ch",
-            "description": "webservice providing xtb calculations",
+            "project_name": "xps-service",
+            "repo_name": "xps-service",
+            "first_module_name": "xps-service",
+            "author_name": "Mounir Mensi",
+            "author_email": "mounir.mensi@epfl.ch",
+            "description": "webservice providing XPS binding energy calculations for C 1s and O 1s",
             "_cheminfo_cc_version": 0.1,
             "_template": "https://github.com/cheminfo-py/cheminfo-webservice-cookiecutter"
         }
