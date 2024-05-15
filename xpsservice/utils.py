@@ -2,7 +2,11 @@
 import hashlib
 
 import numpy as np
+
 from ase import Atoms
+from ase.io import write
+from io import StringIO
+
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
@@ -47,7 +51,7 @@ def rdkit2ase(mol):
 
     return atoms
 
-#MM try remove caching
+
 def molfile2ase(molfile: str, max_atoms: int = MAX_ATOMS_XTB) -> Atoms:
     try:
         result = conformer_cache.get(molfile)
@@ -62,6 +66,24 @@ def molfile2ase(molfile: str, max_atoms: int = MAX_ATOMS_XTB) -> Atoms:
         result = rdkit2ase(mol), mol
         conformer_cache.set(molfile, result, expire=None)
     return result
+
+def compare_atom_order(molfile_obj, ase_obj):
+    # Extract atomic symbols from MolFile object
+    molfile_atoms = [atom.GetSymbol() for atom in molfile_obj.GetAtoms()]
+    
+    # Extract atomic symbols from ASE Atoms object
+    ase_atoms = ase_obj.get_chemical_symbols()
+    
+    # Check if the number of atoms matches
+    if len(molfile_atoms) != len(ase_atoms):
+        return False
+    
+    # Compare atomic symbols
+    for molfile_atom, ase_atom in zip(molfile_atoms, ase_atoms):
+        if molfile_atom != ase_atom:
+            return False
+    
+    return True
 
 
 def smiles2ase(smiles: str, max_atoms: int = MAX_ATOMS_XTB) -> Atoms:

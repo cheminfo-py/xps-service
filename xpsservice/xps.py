@@ -11,6 +11,7 @@ import pickle
 import hashlib
 
 from ase import Atoms
+from ase.build.tools import sort
 from quippy.descriptors import Descriptor
 
 from .cache import soap_config_cache, model_cache
@@ -20,7 +21,8 @@ from .settings import MAX_ATOMS_XTB, MAX_ATOMS_FF, TIMEOUT, transition_map
 from .utils import (
     cache_hash,
     molfile2ase,
-    molfile2smiles
+    molfile2smiles,
+    compare_atom_order
 )
 
 
@@ -177,6 +179,29 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
     # Return a list of binding energy predictions
     return list(zip(be, std))
 
+'''
+def reorder_predictions(ase_mol: Atoms, be_predictions: dict) -> list:
+    # Initialize a list to store binding energies and standard deviations in the order of atoms in ASE file
+    be_list = []
+
+    # Initialize a dictionary to keep track of the number of atoms of each element
+    atom_count = {element: 0 for element in be_predictions.keys()}
+
+    # Iterate through atoms in ASE file
+    for atom in ase_mol:
+        element = atom.symbol
+        if element in be_predictions:
+            # Get the list of binding energies and standard deviations for the current element
+            predictions = be_predictions[element]
+
+            # Add the binding energies and standard deviations for the current atom to be_list
+            be_list.extend(predictions[atom_count[element]])
+
+            # Increment the count of atoms of the current element
+            atom_count[element] += 1
+
+    return be_list
+'''
 
 def run_xps_calculations(ase_mol: Atoms) -> dict:
     #Check the type of the input molecule
@@ -201,8 +226,13 @@ def run_xps_calculations(ase_mol: Atoms) -> dict:
             be_predictions[transition_key] = predictions
         else:
             logging.warning(f"No model found for element {element} in transition {transition_key}")
-
+     
     return be_predictions
+
+
+
+
+
 
 
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
@@ -212,11 +242,19 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
     smiles = molfile2smiles(molfile)
     ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
     
+    # Sort the atoms by atomic number
+    #ase_mol_sorted = sort(ase_mol)
+    #molfile_sorted = ase2molfile(ase_mol_sorted)
+    
     # Optimize the ASE molecule
     opt_result = run_xtb_opt(ase_mol, fmax=fmax, method=method)
     opt_ase_mol = opt_result.atoms
     if not isinstance(opt_ase_mol, Atoms):
         raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
+    
+    #compare the order of the atoms between the molfile and the ase object
+    #if compare_atom_order(molfile, opt_ase_mol) == False:
+    #    raise ValueError(f"After xtb optimization, order of the atoms between the molfile and the ase object")
     
     # Run XPS calculations
     be_predictions = run_xps_calculations(opt_ase_mol)
@@ -228,6 +266,8 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
         energies, stds = zip(*predictions)
         binding_energies.extend(list(energies))
         standard_deviations.extend(list(stds))
+       
+    #binding_energies, standard_deviations = reorder_binding_energies(opt_ase_mol, be_predictions)
 
     # Create an instance of XPSResult
     xps_result = XPSResult(
@@ -240,3 +280,126 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
     return xps_result
 
 
+'''
+@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
+def calculate_BE_from_ase(ase_mol, method, fmax) -> XPSResult:
+
+    #Convert molfile to smiles and ASE molecule
+    #smiles = molfile2smiles(molfile)
+    #ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
+    
+    # Sort the atoms by atomic number
+    ase_mol_sorted = ase_mol.copy()
+    ase_mol_sorted.sort()
+    
+    #create molfile and smiles output
+    molfile_sorted = ase2molfile(ase_mol_sorted)
+    smiles = molfile2smiles(molfile_sorted)
+    
+    # Optimize the geometry of the sorted ASE molecule
+    opt_result = run_xtb_opt(ase_mol_sorted, fmax=fmax, method=method)
+    ase_mol_sorted_opt = opt_result.atoms
+    if not isinstance(ase_mol_sorted_opt, Atoms):
+        raise TypeError(f"After xtb optimization, expected ase_mol_sorted to be of type Atoms, but got {type(ase_mol_sorted).__name__}")
+    
+    # Run XPS calculations
+    be_predictions = run_xps_calculations(ase_mol_sorted_opt)
+    
+    # Extract binding energies and standard deviations
+    binding_energies = []
+    standard_deviations = []
+    for transition_key, predictions in be_predictions.items():
+        energies, stds = zip(*predictions)
+        binding_energies.extend(list(energies))
+        standard_deviations.extend(list(stds))
+
+    # Create an instance of XPSResult
+    xps_result = XPSResult(
+        molfile=molfile_sorted,
+        smiles=smiles,
+        bindingEnergies=binding_energies,
+        standardDeviations=standard_deviations
+    )
+
+    return xps_result
+'''
+
+'''
+def reorder_binding_energies(ase_mol: Atoms, be_predictions: dict) -> tuple:
+    # Initialize lists to store binding energies and standard deviations in the order of atoms in ASE file
+    binding_energies = []
+    standard_deviations = []
+
+    # Initialize a dictionary to keep track of the number of atoms of each element
+    atom_count = {element: 0 for element in be_predictions.keys()}
+
+    # Iterate through atoms in ASE file
+    for atom in ase_mol:
+        element = atom.symbol
+        if element in be_predictions:
+            
+            # Get the list of binding energies and standard deviations for the current element
+            predictions = be_predictions[element]
+
+            # Add the binding energies and standard deviations for the current atom to lists
+            for energy, std in predictions[atom_count[element]]:
+                binding_energies.append(energy)
+                standard_deviations.append(std)
+
+            # Increment the count of atoms of the current element
+            atom_count[element] += 1
+
+    return binding_energies, standard_deviations
+
+
+def reorder_predictions(ase_mol, be_predictions):
+    index = 0
+    
+    json_data = {
+        "smiles": smiles,
+        "molfile": molfile,
+        "ase": str(ase_obj),
+        "atoms": []
+    }
+
+    # Initialize a dictionary to keep track of the number of atoms of each element
+    atom_count = {key: 0 for key in be_predictions.keys()}
+    
+    # Iterate through atoms in ASE file
+    for atom in ase_mol:
+        element = atom.symbol
+
+        for key, transition_info in transition_map:
+            if transition_info["element"] == element:
+                # Get the list of binding energies and standard deviations for the current element
+                predictions = be_predictions[key]
+                
+                # Add the binding energies and standard deviations for the current atom to lists
+                for be, std in predictions[atom_count[key]]:
+                
+                atom_data = {
+                    "element": atom.symbol,
+                    "position": {
+                        "x": atom.position[0],
+                        "y": atom.position[1],
+                        "z": atom.position[2]
+                    },
+                    "orbitals": {
+                        key: {
+                            "binding_energy": be,
+                            "standard_deviation": std
+                        }   
+                    }
+                }
+                
+                # Increment the count of atoms of the current element
+                atom_count[element] += 1               
+                
+        json_data["atoms"].append(atom_data)
+
+                
+                
+                
+                
+
+'''

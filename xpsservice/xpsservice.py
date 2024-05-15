@@ -10,7 +10,7 @@ from starlette.middleware import Middleware
 
 from . import __version__
 from .conformers import conformers_from_molfile, conformers_from_smiles
-from .utils import smiles2molfile, molfile2smiles
+from .utils import smiles2molfile, molfile2smiles, smiles2ase, molfile2ase
 from .errors import TooLargeError
 from .models import ConformerLibrary, ConformerRequest
 from .cache import *
@@ -43,7 +43,7 @@ app = FastAPI(
 #ping
 @app.get("/ping")
 def ping():
-    return {"message": "pong"}
+    return {"message": "pongping"}
 
 
 #load models and descriptors
@@ -100,7 +100,7 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     elif molfile and not smiles:
         # Convert molFile to SMILES using your function
         smiles = molfile2smiles(molfile)
-    elif not smiles and not molfile:
+    else:
         raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
     print("converted format")
     # Perform calculations
@@ -112,6 +112,43 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     # Return the result
     return result
 
+'''
+# Predicts the binding energies
+@app.post("/predict_binding_energies", response_model=XPSResult)
+def predict_binding_energies_endpoint(request: XPSRequest):
+    
+    # Get the cache status from the function and optionnaly relaod
+    cache_status = check_cache_status(selected_transition_map)
+    if has_any_cache_failure(cache_status) == True:
+        load_soap_configs_and_models(selected_transition_map)
+       
+    # Extract the input data
+    smiles = request.smiles
+    molfile = request.molFile
+    method = request.method
+    fmax = request.fmax
+    
+    # Perform conversions to molfile based on the provided input
+    if smiles and not molfile:
+        logging.debug("if smiles")
+        # Convert SMILES to molFile using your function
+        ase_mol = smiles2ase(smiles)
+        logging.debug("smiles conversion")
+    elif molfile and not smiles:
+        # Convert molFile to SMILES using your function
+        ase_mol = molfile2ase(molfile)
+    else:
+        raise HTTPException(status_code=400, detail="Either a SMILES or a molFile must be provided.")
+    print("converted format")
+    # Perform calculations
+    try:
+        result = calculate_BE_from_ase(ase_mol, method, fmax)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Return the result
+    return result
+'''
 
 #checks version
 @app.get("/app_version")
