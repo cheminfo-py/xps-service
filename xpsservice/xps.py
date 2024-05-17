@@ -17,7 +17,7 @@ from quippy.descriptors import Descriptor
 from .cache import soap_config_cache, model_cache
 from .models import *
 from .optimize import run_xtb_opt
-from .settings import MAX_ATOMS_XTB, MAX_ATOMS_FF, TIMEOUT, transition_map
+from .settings import MAX_ATOMS_XTB, MAX_ATOMS_FF, TIMEOUT
 from .utils import (
     cache_hash,
     molfile2ase,
@@ -173,7 +173,7 @@ def calculate_binding_energies(ase_mol: Atoms, transition_key):
 
 
 
-def run_xps_calculations(ase_mol: Atoms) -> dict:
+def run_xps_calculations(ase_mol: Atoms, transition_map) -> dict:
     #Check the type of the input molecule
     if not isinstance(ase_mol, Atoms):
         raise TypeError(f"in run_xps_calculation, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
@@ -200,7 +200,7 @@ def run_xps_calculations(ase_mol: Atoms) -> dict:
     return be_predictions
 
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
-def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
+def calculate_from_molfile(molfile, method, fmax, transition_map) -> XPSResult:
 
     # Convert molfile to smiles and ASE molecule
     smiles = molfile2smiles(molfile)
@@ -213,7 +213,7 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
         raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
     
     # Run XPS calculations
-    be_predictions = run_xps_calculations(opt_ase_mol)
+    be_predictions = run_xps_calculations(opt_ase_mol, transition_map)
     
     # Reorder predictions if available
     if isinstance(be_predictions, dict):
@@ -226,7 +226,7 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
     xps_result = XPSResult(
         molfile=molfile,
         smiles=smiles,
-        prediction=ordered_predictions
+        predictions=ordered_predictions
     )
 
     return xps_result
@@ -256,8 +256,8 @@ def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: di
                     if isinstance(prediction, tuple) and len(prediction) == 2:
                         binding_energy, standard_deviation = prediction
                         prediction_data[transition_key] = PredictionData(
-                            binding_energy=binding_energy,
-                            standard_deviation=standard_deviation
+                            bindingEnergy=binding_energy,
+                            standardDeviation=standard_deviation
                         )
                     else:
                         # Log warning if prediction format is unexpected

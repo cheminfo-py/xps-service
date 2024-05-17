@@ -29,11 +29,12 @@ You have the possibility to modify the photoemission transition that will be use
 -The option to import your own ML_model that should be pickled scikit GPR models
 -The possibility to import your own descriptors which should be SOAP. A utiliy notebook allowing to convert a soap configuration to a saop file that could be further used to calculate the descriptor is saved in /SOAP_config
 
-Note that adding elements to the transition_map implies adding dedicated GPR models as well as new SOAP. It also implies the modification of the existing SOAP config to account for the new interactions between the described elements
+Note that adding elements to the transition_map implies adding dedicated GPR models as well as new SOAPs. It also implies the modification of the existing SOAP config to account for the new interactions between the described elements
 
 You have the option to customize the behavior of the app using environment variables:
 
-- `MAX_ATOMS_XTB`: if the input contains more than this number of atoms, an error is thrown
+- `MAX_ATOMS_XTB`: if the input contains more than this number of atoms, an error is thrown (at the optimization stage)
+- `MAX_ATOMS_FF`: if the input contains more than this number of atoms, an error is thrown (at the conformer generation stage)
 - `TIMEOUT`: If the request takes longer than this time (in seconds) a `TimeOut` error is raised
 - `CACHEDIR`: Sets the directory for the diskcache. It will be mounted by the docker container.
 

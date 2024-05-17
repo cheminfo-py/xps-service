@@ -112,22 +112,20 @@ def predict_binding_energies_endpoint(request: XPSRequest):
         molfile = smiles2molfile(smiles)
         logging.debug("smiles conversion")
     elif molfile and not smiles:
-        # Convert molFile to SMILES using your function
-        smiles = molfile2smiles(molfile)
+        pass
     else:
         raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
     print("converted format")
     # Perform calculations
     try:
-        result = calculate_from_molfile(molfile, method, fmax)
+        result = calculate_from_molfile(molfile, method, fmax, selected_transition_map)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # Return the result
     return result
 
-'''
-# Predicts the binding energies
+'''# Predicts the binding energies
 @app.post("/predict_binding_energies", response_model=XPSResult)
 def predict_binding_energies_endpoint(request: XPSRequest):
     
@@ -146,23 +144,22 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     if smiles and not molfile:
         logging.debug("if smiles")
         # Convert SMILES to molFile using your function
-        ase_mol = smiles2ase(smiles)
+        molfile = smiles2molfile(smiles)
         logging.debug("smiles conversion")
     elif molfile and not smiles:
         # Convert molFile to SMILES using your function
-        ase_mol = molfile2ase(molfile)
+        smiles = molfile2smiles(molfile)
     else:
-        raise HTTPException(status_code=400, detail="Either a SMILES or a molFile must be provided.")
+        raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
     print("converted format")
     # Perform calculations
     try:
-        result = calculate_BE_from_ase(ase_mol, method, fmax)
+        result = calculate_from_molfile(molfile, method, fmax, selected_transition_map)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # Return the result
-    return result
-'''
+    return result'''
 
 #checks version
 @app.get("/app_version")
