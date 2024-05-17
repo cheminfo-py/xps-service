@@ -21,8 +21,22 @@ from .models import ConformerLibrary, ConformerRequest, XPSRequest, XPSResult
 from .settings import MAX_ATOMS_FF, MAX_ATOMS_XTB, transition_map
 
 import logging
+import sys
 
 ALLOWED_HOSTS = ["*"]
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG to capture all levels of logs
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 
 '''The desired transition-map should be defined here'''
 selected_transition_map = transition_map

@@ -87,6 +87,22 @@ class XPSRequest(BaseModel):
         return v
 
 
+
+#OUTPUT models
+class Position(BaseModel):
+    x: float
+    y: float
+    z: float
+
+class Prediction_data(BaseModel):
+    binding_energy: float
+    standard_deviation: float
+
+class Prediction(BaseModel):
+    atom: str
+    position: Position
+    prediction: Dict[str, Prediction_data] #[orbital, prediction for the orbital]
+
 class XPSResult(BaseModel):
     molfile: str = Field(
         None, description = "Molfile (calculated or gived) used for the binding energy prediction"
@@ -94,11 +110,8 @@ class XPSResult(BaseModel):
     smiles: Optional[str] = Field(
         None, description = "SMILES (if given) used for the binding energy prediction"
     )
-    bindingEnergies: List[float] = Field(
-        None, description="List of binding energies in eV"
-    )
-    standardDeviations: List[float] = Field(
-        None, description="List of standard deviations of the binding energies in eV"
+    prediction: List[Prediction] = Field(
+        None, description = "List of binding energies and standard deviations for every atom of the molecule and any predicted orbital"
     )
 
 

@@ -119,89 +119,59 @@ def get_max_atoms(method):
 
 
 def calculate_binding_energies(ase_mol: Atoms, transition_key):
-    print(" entered calculate binding energies")
+    print("Entered calculate_binding_energies")
     if not isinstance(ase_mol, Atoms):
         raise TypeError(f"in calculate_binding_energies expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
-    """
-    Calculate binding energies for the atoms of a given molecule based on the loaded ML model and loaded descriptor.
-    
-    Parameters:
-    mol: The molecule object.
-    element: The element for which to calculate binding energies.
-    transition_key: The specific transition_key follows the naming in transition_map from .models.py (e.g., "C1s" or "O1s").
 
-    Returns:
-    list: A list of binding energy predictions for the specified element and transition.
-    """
     transition_info = transition_map[transition_key]
     element = transition_info['element']
     orbital = transition_info['orbital']
 
-    # Check if the input transition is one of the keys in the transition_map
     if transition_key not in transition_map:
         raise KeyError(f"Transition '{transition_key}' is not a valid transition. Valid transitions are: {list(transition_map.keys())}")
-    
-    # Retrieve SOAP config from the cache
+
     soap_config_hashed_key = cache_hash(transition_key, "soap_config_cache")
     soap_config = soap_config_cache.get(soap_config_hashed_key)
     if soap_config is None:
         logging.error(f"SOAP config not found in cache for transition {transition_key}")
         return []
-    
-    #Build SOAP descriptor from SOAP config loaded
+
     soap_descriptor = Descriptor(soap_config)
     if soap_descriptor is None:
         logging.error(f"SOAP descriptor could not be built from SOAP config for transition {transition_key}")
         return []
-    
-    # Retrieve ML model from the cache
+
     model_hashed_key = cache_hash(transition_key, "ml_model_cache")
     ml_model = model_cache.get(model_hashed_key)
     if ml_model is None:
         logging.error(f"ML model not found in cache for transition {transition_key}")
         return []
-    
-    # Calculate the SOAP descriptor for the molecule
-    desc_data = soap_descriptor.calc(ase_mol)
 
-    # Check if the descriptor data is available
+    desc_data = soap_descriptor.calc(ase_mol)
     if 'data' not in desc_data:
         logging.error(f"No descriptor data found for molecule with transition {transition_key}")
         return []
 
-    # Get the data from the descriptor object
     desc_molecule = desc_data['data']
-    
-    # Predict binding energies using the ML model
-    be, std = ml_model.predict(desc_molecule, return_std=True)
-    logging.info(f'Predicted {len(be)} binding energies for element {element}, orbital {orbital}, defined in {transition_key}')
 
-    # Return a list of binding energy predictions
+    try:
+        be, std = ml_model.predict(desc_molecule, return_std=True)
+        print(f'Predicted binding energies: {be}')
+        print(f'Predicted standard deviations: {std}')
+        logging.info(f'Predicted {len(be)} binding energies for element {element}, orbital {orbital}, defined in {transition_key}')
+    except Exception as e:
+        logging.error(f"Error during prediction: {e}")
+        return []
+
+    if not hasattr(be, '__iter__') or not hasattr(std, '__iter__'):
+        logging.error(f"Expected iterable outputs from predict method, got {type(be)} and {type(std)}")
+        return []
+
     return list(zip(be, std))
 
-'''
-def reorder_predictions(ase_mol: Atoms, be_predictions: dict) -> list:
-    # Initialize a list to store binding energies and standard deviations in the order of atoms in ASE file
-    be_list = []
 
-    # Initialize a dictionary to keep track of the number of atoms of each element
-    atom_count = {element: 0 for element in be_predictions.keys()}
 
-    # Iterate through atoms in ASE file
-    for atom in ase_mol:
-        element = atom.symbol
-        if element in be_predictions:
-            # Get the list of binding energies and standard deviations for the current element
-            predictions = be_predictions[element]
 
-            # Add the binding energies and standard deviations for the current atom to be_list
-            be_list.extend(predictions[atom_count[element]])
-
-            # Increment the count of atoms of the current element
-            atom_count[element] += 1
-
-    return be_list
-'''
 
 def run_xps_calculations(ase_mol: Atoms) -> dict:
     #Check the type of the input molecule
@@ -229,12 +199,6 @@ def run_xps_calculations(ase_mol: Atoms) -> dict:
      
     return be_predictions
 
-
-
-
-
-
-
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
 def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
 
@@ -242,23 +206,130 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
     smiles = molfile2smiles(molfile)
     ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
     
-    # Sort the atoms by atomic number
-    #ase_mol_sorted = sort(ase_mol)
-    #molfile_sorted = ase2molfile(ase_mol_sorted)
-    
-    # Optimize the ASE molecule
+    # Optimize the geometry of the ASE molecule using xTB
     opt_result = run_xtb_opt(ase_mol, fmax=fmax, method=method)
     opt_ase_mol = opt_result.atoms
     if not isinstance(opt_ase_mol, Atoms):
         raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
     
-    #compare the order of the atoms between the molfile and the ase object
-    #if compare_atom_order(molfile, opt_ase_mol) == False:
+    # Run XPS calculations
+    be_predictions = run_xps_calculations(opt_ase_mol)
+    
+    # Reorder predictions if available
+    if isinstance(be_predictions, dict):
+        ordered_predictions = reorder_predictions(be_predictions, ase_mol, transition_map)
+    else:
+        logging.error(f"Unexpected format for be_predictions: {be_predictions}")
+        ordered_predictions = []
+    
+    # Create an instance of XPSResult
+    xps_result = XPSResult(
+        molfile=molfile,
+        smiles=smiles,
+        prediction=ordered_predictions
+    )
+
+    return xps_result
+
+
+def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: dict) -> List[Prediction]:
+    ordered_predictions = []
+
+    # Iterate over atoms in the ASE molecule
+    for atom in ase_mol:
+        atom_symbol = atom.symbol
+        position = dict(x=atom.position[0], y=atom.position[1], z=atom.position[2])
+        prediction_data = {}
+
+        # Check if predictions are available for the current atom
+        for transition_key, predictions in be_predictions.items():
+            print(f"Processing transition {transition_key} for atom {atom_symbol}")
+            # Retrieve the element from transition_map using the transition_key
+            element = transition_map.get(transition_key, {}).get("element")
+
+            if element == atom_symbol:
+                print("Element matches atom symbol")
+                # Create Prediction_data objects for each prediction
+                for prediction in predictions:
+                    print(f"Processing prediction: {prediction}")
+                    # Check if prediction is in the expected format
+                    if isinstance(prediction, tuple) and len(prediction) == 2:
+                        binding_energy, standard_deviation = prediction
+                        prediction_data[transition_key] = Prediction_data(
+                            binding_energy=binding_energy,
+                            standard_deviation=standard_deviation
+                        )
+                    else:
+                        # Log warning if prediction format is unexpected
+                        logging.warning(f"Unexpected format for prediction: {prediction}")
+                break  # No need to check other transitions if a match is found
+
+        # Create Prediction object for the atom
+        ordered_predictions.append(Prediction(atom=atom_symbol, position=position, prediction=prediction_data))
+
+    return ordered_predictions
+
+
+'''
+def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: dict) -> List[Prediction]:
+    ordered_predictions = []
+    
+    # Iterate over atoms in the ASE molecule
+    for atom in ase_mol:
+        atom_symbol = atom.symbol
+        position = dict(x=atom.position[0], y=atom.position[1], z=atom.position[2])
+        prediction_data = {}
+        
+        # Check if predictions are available for the current atom
+        for transition_key, predictions in be_predictions.items():
+            print("entered for")
+            # Retrieve the element from transition_map using the transition_key
+            element = transition_map.get(transition_key, {}).get("element")
+            
+            if element == atom_symbol:
+                print("entered if")
+                # Create Prediction_data objects for each prediction
+                for prediction in predictions:
+                    # Check if prediction is in the expected format
+                    if isinstance(prediction, tuple) and len(prediction) == 2:
+                        orbital, (binding_energy, standard_deviation) = prediction
+                        prediction_data[orbital] = Prediction_data(
+                            binding_energy=binding_energy,
+                            standard_deviation=standard_deviation
+                        )
+                    else:
+                        # Log warning if prediction format is unexpected
+                        logging.warning(f"Unexpected format for prediction: {prediction}")
+                break  # No need to check other transitions if a match is found
+        
+        # Create Prediction object for the atom
+        ordered_predictions.append(Prediction(atom=atom_symbol, position=position, prediction=prediction_data))
+    
+    return ordered_predictions
+'''
+
+'''
+@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
+def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
+
+    # Convert molfile to smiles and ASE molecule
+    smiles = molfile2smiles(molfile)
+    ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
+    
+    # Optimize the geometry of the ASE molecule using xTB
+    opt_result = run_xtb_opt(ase_mol, fmax=fmax, method=method)
+    opt_ase_mol = opt_result.atoms
+    if not isinstance(opt_ase_mol, Atoms):
+        raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
+    
+    # compare the order of the atoms between the molfile and the ase object
+    # if compare_atom_order(molfile, opt_ase_mol) == False:
     #    raise ValueError(f"After xtb optimization, order of the atoms between the molfile and the ase object")
     
     # Run XPS calculations
     be_predictions = run_xps_calculations(opt_ase_mol)
     
+
     # Extract binding energies and standard deviations
     binding_energies = []
     standard_deviations = []
@@ -266,140 +337,19 @@ def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
         energies, stds = zip(*predictions)
         binding_energies.extend(list(energies))
         standard_deviations.extend(list(stds))
-       
+ 
     #binding_energies, standard_deviations = reorder_binding_energies(opt_ase_mol, be_predictions)
-
+    
+    ordered_predictions = reorder_predictions(be_predictions, ase_mol, transition_map)
+    
     # Create an instance of XPSResult
     xps_result = XPSResult(
         molfile=molfile,
         smiles=smiles,
-        bindingEnergies=binding_energies,
-        standardDeviations=standard_deviations
+        prediction=ordered_predictions
+        #bindingEnergies=binding_energies,
+        #standardDeviations=standard_deviations
     )
 
     return xps_result
-
-
-'''
-@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
-def calculate_BE_from_ase(ase_mol, method, fmax) -> XPSResult:
-
-    #Convert molfile to smiles and ASE molecule
-    #smiles = molfile2smiles(molfile)
-    #ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
-    
-    # Sort the atoms by atomic number
-    ase_mol_sorted = ase_mol.copy()
-    ase_mol_sorted.sort()
-    
-    #create molfile and smiles output
-    molfile_sorted = ase2molfile(ase_mol_sorted)
-    smiles = molfile2smiles(molfile_sorted)
-    
-    # Optimize the geometry of the sorted ASE molecule
-    opt_result = run_xtb_opt(ase_mol_sorted, fmax=fmax, method=method)
-    ase_mol_sorted_opt = opt_result.atoms
-    if not isinstance(ase_mol_sorted_opt, Atoms):
-        raise TypeError(f"After xtb optimization, expected ase_mol_sorted to be of type Atoms, but got {type(ase_mol_sorted).__name__}")
-    
-    # Run XPS calculations
-    be_predictions = run_xps_calculations(ase_mol_sorted_opt)
-    
-    # Extract binding energies and standard deviations
-    binding_energies = []
-    standard_deviations = []
-    for transition_key, predictions in be_predictions.items():
-        energies, stds = zip(*predictions)
-        binding_energies.extend(list(energies))
-        standard_deviations.extend(list(stds))
-
-    # Create an instance of XPSResult
-    xps_result = XPSResult(
-        molfile=molfile_sorted,
-        smiles=smiles,
-        bindingEnergies=binding_energies,
-        standardDeviations=standard_deviations
-    )
-
-    return xps_result
-'''
-
-'''
-def reorder_binding_energies(ase_mol: Atoms, be_predictions: dict) -> tuple:
-    # Initialize lists to store binding energies and standard deviations in the order of atoms in ASE file
-    binding_energies = []
-    standard_deviations = []
-
-    # Initialize a dictionary to keep track of the number of atoms of each element
-    atom_count = {element: 0 for element in be_predictions.keys()}
-
-    # Iterate through atoms in ASE file
-    for atom in ase_mol:
-        element = atom.symbol
-        if element in be_predictions:
-            
-            # Get the list of binding energies and standard deviations for the current element
-            predictions = be_predictions[element]
-
-            # Add the binding energies and standard deviations for the current atom to lists
-            for energy, std in predictions[atom_count[element]]:
-                binding_energies.append(energy)
-                standard_deviations.append(std)
-
-            # Increment the count of atoms of the current element
-            atom_count[element] += 1
-
-    return binding_energies, standard_deviations
-
-
-def reorder_predictions(ase_mol, be_predictions):
-    index = 0
-    
-    json_data = {
-        "smiles": smiles,
-        "molfile": molfile,
-        "ase": str(ase_obj),
-        "atoms": []
-    }
-
-    # Initialize a dictionary to keep track of the number of atoms of each element
-    atom_count = {key: 0 for key in be_predictions.keys()}
-    
-    # Iterate through atoms in ASE file
-    for atom in ase_mol:
-        element = atom.symbol
-
-        for key, transition_info in transition_map:
-            if transition_info["element"] == element:
-                # Get the list of binding energies and standard deviations for the current element
-                predictions = be_predictions[key]
-                
-                # Add the binding energies and standard deviations for the current atom to lists
-                for be, std in predictions[atom_count[key]]:
-                
-                atom_data = {
-                    "element": atom.symbol,
-                    "position": {
-                        "x": atom.position[0],
-                        "y": atom.position[1],
-                        "z": atom.position[2]
-                    },
-                    "orbitals": {
-                        key: {
-                            "binding_energy": be,
-                            "standard_deviation": std
-                        }   
-                    }
-                }
-                
-                # Increment the count of atoms of the current element
-                atom_count[element] += 1               
-                
-        json_data["atoms"].append(atom_data)
-
-                
-                
-                
-                
-
 '''
