@@ -28,7 +28,7 @@ ALLOWED_HOSTS = ["*"]
 selected_transition_map = transition_map
 
 #Initial loading
-load_soap_configs_and_models(selected_transition_map)
+#load_soap_configs_and_models(selected_transition_map)
 
 
 app = FastAPI(

@@ -14,5 +14,6 @@ COPY README.md .
 COPY xpsservice ./xpsservice
 COPY SOAP_configs ./SOAP_configs
 COPY ML_models ./ML_models
+COPY xpscache ./xpscache
 
 CMD gunicorn -w $WORKERS xpsservice.xpsservice:app -b 0.0.0.0:$PORT -k uvicorn.workers.UvicornWorker -t $TIMEOUT --keep-alive $TIMEOUT

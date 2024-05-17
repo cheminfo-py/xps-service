@@ -16,9 +16,9 @@ services:
     ports:
       - ${PORT}:${PORT}
     volumes:
-      - ./xpsservice:/xpsservice
-      - ./xpscache:/xpscache
-      - ./SOAP_configs:/SOAP_configs
-      - ./ML_models:/ML_models
+    #  - ./xpsservice:/xpsservice
+    #  - ./xpscache:/xpscache
+    #  - ./SOAP_configs:/SOAP_configs
+    #  - ./ML_models:/ML_models
     security_opt:
       - seccomp:unconfined
