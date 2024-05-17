@@ -255,7 +255,7 @@ def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: di
                     # Check if prediction is in the expected format
                     if isinstance(prediction, tuple) and len(prediction) == 2:
                         binding_energy, standard_deviation = prediction
-                        prediction_data[transition_key] = Prediction_data(
+                        prediction_data[transition_key] = PredictionData(
                             binding_energy=binding_energy,
                             standard_deviation=standard_deviation
                         )
@@ -268,88 +268,3 @@ def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: di
         ordered_predictions.append(Prediction(atom=atom_symbol, position=position, prediction=prediction_data))
 
     return ordered_predictions
-
-
-'''
-def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: dict) -> List[Prediction]:
-    ordered_predictions = []
-    
-    # Iterate over atoms in the ASE molecule
-    for atom in ase_mol:
-        atom_symbol = atom.symbol
-        position = dict(x=atom.position[0], y=atom.position[1], z=atom.position[2])
-        prediction_data = {}
-        
-        # Check if predictions are available for the current atom
-        for transition_key, predictions in be_predictions.items():
-            print("entered for")
-            # Retrieve the element from transition_map using the transition_key
-            element = transition_map.get(transition_key, {}).get("element")
-            
-            if element == atom_symbol:
-                print("entered if")
-                # Create Prediction_data objects for each prediction
-                for prediction in predictions:
-                    # Check if prediction is in the expected format
-                    if isinstance(prediction, tuple) and len(prediction) == 2:
-                        orbital, (binding_energy, standard_deviation) = prediction
-                        prediction_data[orbital] = Prediction_data(
-                            binding_energy=binding_energy,
-                            standard_deviation=standard_deviation
-                        )
-                    else:
-                        # Log warning if prediction format is unexpected
-                        logging.warning(f"Unexpected format for prediction: {prediction}")
-                break  # No need to check other transitions if a match is found
-        
-        # Create Prediction object for the atom
-        ordered_predictions.append(Prediction(atom=atom_symbol, position=position, prediction=prediction_data))
-    
-    return ordered_predictions
-'''
-
-'''
-@wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
-def calculate_from_molfile(molfile, method, fmax) -> XPSResult:
-
-    # Convert molfile to smiles and ASE molecule
-    smiles = molfile2smiles(molfile)
-    ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
-    
-    # Optimize the geometry of the ASE molecule using xTB
-    opt_result = run_xtb_opt(ase_mol, fmax=fmax, method=method)
-    opt_ase_mol = opt_result.atoms
-    if not isinstance(opt_ase_mol, Atoms):
-        raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
-    
-    # compare the order of the atoms between the molfile and the ase object
-    # if compare_atom_order(molfile, opt_ase_mol) == False:
-    #    raise ValueError(f"After xtb optimization, order of the atoms between the molfile and the ase object")
-    
-    # Run XPS calculations
-    be_predictions = run_xps_calculations(opt_ase_mol)
-    
-
-    # Extract binding energies and standard deviations
-    binding_energies = []
-    standard_deviations = []
-    for transition_key, predictions in be_predictions.items():
-        energies, stds = zip(*predictions)
-        binding_energies.extend(list(energies))
-        standard_deviations.extend(list(stds))
- 
-    #binding_energies, standard_deviations = reorder_binding_energies(opt_ase_mol, be_predictions)
-    
-    ordered_predictions = reorder_predictions(be_predictions, ase_mol, transition_map)
-    
-    # Create an instance of XPSResult
-    xps_result = XPSResult(
-        molfile=molfile,
-        smiles=smiles,
-        prediction=ordered_predictions
-        #bindingEnergies=binding_energies,
-        #standardDeviations=standard_deviations
-    )
-
-    return xps_result
-'''
