@@ -108,22 +108,34 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     # Perform conversions to molfile based on the provided input
     if smiles and not molfile:
         logging.debug("if smiles")
+        smiles_input = True
         # Convert SMILES to molFile using your function
         molfile = smiles2molfile(smiles)
         logging.debug("smiles conversion")
     elif molfile and not smiles:
-        pass
+        smiles_input = False
     else:
         raise HTTPException(status_code=400, detail="Either SMILES or molFile must be provided.")
     print("converted format")
     # Perform calculations
     try:
-        result = calculate_from_molfile(molfile, method, fmax, selected_transition_map)
+        predictions = calculate_from_molfile(molfile, method, fmax, selected_transition_map)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+    if smiles_input == True:
+        querry = smiles
+    else:
+        querry = molfile
+    
+     # Create an instance of XPSResult
+    xps_result = XPSResult(
+        querry = querry,
+        predictions = predictions
+    )
 
     # Return the result
-    return result
+    return xps_result
 
 '''# Predicts the binding energies
 @app.post("/predict_binding_energies", response_model=XPSResult)

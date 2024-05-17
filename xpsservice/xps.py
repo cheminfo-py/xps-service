@@ -221,15 +221,8 @@ def calculate_from_molfile(molfile, method, fmax, transition_map) -> XPSResult:
     else:
         logging.error(f"Unexpected format for be_predictions: {be_predictions}")
         ordered_predictions = []
-    
-    # Create an instance of XPSResult
-    xps_result = XPSResult(
-        molfile=molfile,
-        smiles=smiles,
-        predictions=ordered_predictions
-    )
 
-    return xps_result
+    return ordered_predictions
 
 
 def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: dict) -> List[Prediction]:
