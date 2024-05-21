@@ -189,6 +189,37 @@ def calculate_from_molfile(molfile, method, fmax, transition_map) -> XPSResult:
 
     return ordered_predictions
 
+
+def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: dict) -> List[Prediction]:
+    ordered_predictions = []
+    
+    atom_index_map = {i: atom for i, atom in enumerate(ase_mol)}
+
+    # Create a dictionary to keep track of which atoms have predictions
+    atom_predictions_map = {i: {} for i in range(len(ase_mol))}
+
+    for transition_key, predictions in be_predictions.items():
+        transition_info = transition_map[transition_key]
+        element = transition_info['element']
+
+        element_indices = [i for i, atom in enumerate(ase_mol) if atom.symbol == element]
+
+        for idx, prediction in zip(element_indices, predictions):
+            atom_predictions_map[idx][transition_key] = PredictionData(
+                bindingEnergy=prediction[0],
+                standardDeviation=prediction[1]
+            )
+
+    # Iterate over all atoms to ensure each one is included in the output
+    for idx, atom in atom_index_map.items():
+        position = dict(x=atom.position[0], y=atom.position[1], z=atom.position[2])
+        prediction_data = atom_predictions_map[idx]
+        ordered_predictions.append(Prediction(atom=atom.symbol, position=position, prediction=prediction_data))
+
+    return ordered_predictions
+
+
+'''Hs missing in the output
 def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: dict) -> List[Prediction]:
     ordered_predictions = []
     
@@ -213,7 +244,7 @@ def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: di
             ordered_predictions.append(Prediction(atom=atom.symbol, position=position, prediction=prediction_data))
             
     return ordered_predictions
-
+'''
 
 
 
