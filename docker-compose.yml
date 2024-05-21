@@ -15,7 +15,7 @@ services:
       - LOG_LEVEL=DEBUG
     ports:
       - ${PORT}:${PORT}
-    volumes:
+    #volumes:
     #  - ./xpsservice:/xpsservice
     #  - ./xpscache:/xpscache
     #  - ./SOAP_configs:/SOAP_configs
