@@ -124,13 +124,13 @@ def predict_binding_energies_endpoint(request: XPSRequest):
         raise HTTPException(status_code=400, detail=str(e))
     
     if smiles_input == True:
-        querry = smiles
+        query = smiles
     else:
-        querry = molfile
+        query = molfile
     
      # Create an instance of XPSResult
     xps_result = XPSResult(
-        querry = querry,
+        query = query,
         predictions = predictions
     )
 

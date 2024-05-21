@@ -87,7 +87,7 @@ class Prediction(BaseModel):
     prediction: Dict[str, PredictionData]  # [orbital, prediction for the orbital]
 
 class XPSResult(BaseModel):
-    querry: str = Field(
+    query: str = Field(
         None, description="Input Molfile or smiles for which binding energy predictions was querried."
     )
     predictions: List[Prediction] = Field(
