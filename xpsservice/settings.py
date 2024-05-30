@@ -7,17 +7,17 @@ from typing import Dict, List, Optional, Set, Any
 
 #Conformer generation method
 ALLOWED_FF = ("uff", "mmff94", "mmff94s")
-MAX_ATOMS_FF = int(os.getenv("MAX_ATOMS_FF", 100))
+MAX_ATOMS_FF = int(os.getenv("MAX_ATOMS_FF", 200))
 
 
 #XTB optimization method
 ALLOWED_METHODS = ("GFNFF", "GFN2xTB", "GFN1xTB")
-MAX_ATOMS_XTB = int(os.getenv("MAX_ATOMS_XTB", 100))
-ALLOWED_FMAX = (0.000001, 0.1)
+MAX_ATOMS_XTB = int(os.getenv("MAX_ATOMS_XTB", 200))
+ALLOWED_FMAX = (0.000001, 1)
 
 
 #timeout for the overall calculation
-TIMEOUT = int(os.getenv("TIMEOUT", 100))
+TIMEOUT = int(os.getenv("TIMEOUT", 500))
 
 
 # Define transition_map dictionary(list of orbitals for which a photoelectron emission is calculated)
@@ -37,6 +37,10 @@ transition_map = {
     }
 }
 
+# Derive allowed elements from transition_map
+def derive_allowed_elements(transition_map: dict) -> Set[str]:
+    allowed_elements = {info["element"] for info in transition_map .values()}
+    return allowed_elements
 
 # Derive allowed elements from transition_map
 def derive_allowed_elements(transition_map: dict) -> Set[str]:

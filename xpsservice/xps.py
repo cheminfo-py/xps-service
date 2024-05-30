@@ -171,7 +171,7 @@ def run_xps_calculations(ase_mol: Atoms, transition_map) -> dict:
 
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
 def calculate_from_molfile(molfile, method, fmax, transition_map) -> XPSResult:
-    smiles = molfile2smiles(molfile)
+    
     ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
     
     opt_result = run_xtb_opt(ase_mol, fmax=fmax, method=method)
