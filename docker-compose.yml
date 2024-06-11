@@ -9,8 +9,8 @@ services:
       - CACHEDIR=/xpscache
       - WORKERS=${WORKERS}
       - OMP_NUM_THREADS=${OMP_NUM_THREADS}
-      - MAX_ATOMS_XTB=100
-      - MAX_ATOMS_FF=100
+      - MAX_ATOMS_XTB=200
+      - MAX_ATOMS_FF=200
       - TIMEOUT=${TIMEOUT}
       - LOG_LEVEL=DEBUG
     ports:

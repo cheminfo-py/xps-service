@@ -6,7 +6,7 @@ import numpy as np
 from ase import Atoms
 from pydantic import BaseModel, Field, validator
 from rdkit import Chem
-from .settings import ALLOWED_FMAX, ALLOWED_ELEMENTS, ALLOWED_FF, ALLOWED_METHODS, transition_map
+from .settings import ALLOWED_FMAX, ALLOWED_ELEMENTS, ALLOWED_FF, ALLOWED_METHODS, ALLOWED_ENERGY_REFERENCE, transition_map
 
 
 class TransitionValidator(BaseModel):
@@ -33,8 +33,12 @@ class XPSRequest(BaseModel):
         description="Method for geometry optimization and XPS binding energies calculation. Allowed values: `GFNFF`, `GFN2xTB`, `GFN1xTB`.",
     )
     fmax: Optional[float] = Field(
-        0.01,
+        0.001,
         description="Maximum force admissible during geometry optimization. Typically ranging from 0.1 to 0.0001."
+    )
+    energyReference: Optional[str] = Field(
+        "solid",
+        description="Energy referencing performed through polynomial regression, for gaz phase, solid state or none (raw data)"
     )
 
     @validator("smiles")
@@ -69,6 +73,12 @@ class XPSRequest(BaseModel):
     def validate_fmax(cls, v):
         if not (ALLOWED_FMAX[0] <= v <= ALLOWED_FMAX[1]):
             raise ValueError(f"fmax must be within the range {ALLOWED_FMAX}")
+        return v
+    
+    @validator("energyReference")
+    def validate_energy_reference(cls, v):
+        if v not in ALLOWED_ENERGY_REFERENCE:
+            raise ValueError(f"Method must be in {ALLOWED_ENERGY_REFERENCE}")
         return v
 
 
