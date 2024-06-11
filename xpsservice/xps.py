@@ -7,6 +7,7 @@ import wrapt_timeout_decorator
 import logging
 import pickle
 import hashlib
+from fastapi.logger import logger
 from ase import Atoms
 from ase.build.tools import sort
 from quippy.descriptors import Descriptor
@@ -170,7 +171,7 @@ def run_xps_calculations(ase_mol: Atoms, transition_map) -> dict:
     return be_predictions
 
 @wrapt_timeout_decorator.timeout(TIMEOUT, use_signals=False)
-def calculate_from_molfile(molfile, method, fmax, transition_map) -> XPSResult:
+def calculate_from_molfile(molfile, method, fmax, energy_reference, transition_map) -> XPSResult:
     
     ase_mol, mol = molfile2ase(molfile, get_max_atoms(method))
     
@@ -180,6 +181,11 @@ def calculate_from_molfile(molfile, method, fmax, transition_map) -> XPSResult:
         raise TypeError(f"After xtb optimization, expected ase_mol to be of type Atoms, but got {type(ase_mol).__name__}")
     
     be_predictions = run_xps_calculations(opt_ase_mol, transition_map)
+    
+    #reference the binding enregy if queried
+    if energy_reference == 'solid':
+        referenced_be_predictions = reference_be_predictions(be_predictions, transition_map)
+        be_predictions = referenced_be_predictions
     
     if isinstance(be_predictions, dict):
         ordered_predictions = reorder_predictions(be_predictions, opt_ase_mol, transition_map)
@@ -217,4 +223,49 @@ def reorder_predictions(be_predictions: dict, ase_mol: Atoms, transition_map: di
         ordered_predictions.append(Prediction(atom=atom.symbol, position=position, prediction=prediction_data))
 
     return ordered_predictions
+
+# Energy referencing of the whole predictions
+def reference_be_predictions(be_predictions: dict, transition_map: dict):
+    
+    referenced_be_predictions = {}
+    
+    for transition_key, predictions in be_predictions.items():
+        # get regression coeffs
+        transition_info = transition_map[transition_key]
+        regression_coefficients = transition_info['regression_coefficients']
+        
+        referenced_predictions = []
+        for prediction in predictions:
+            referenced_predictions.append(reference_be_prediction(prediction, regression_coefficients))
+        
+        referenced_be_predictions[transition_key] = referenced_predictions
+    
+    return referenced_be_predictions
+
+'''
+# Energy referencing of a single prediction based on polynomial fitting of experimental data
+def reference_be_prediction(be_prediction: float, regression_coefficients: list):
+    
+    referenced_be_prediction = be_prediction
+    for i, coeff in enumerate(regression_coefficients):
+        logger.debug(f"be_prediction format {be_prediction}")
+        referenced_be_prediction[0] += coeff * (be_prediction[0] ** i)
+    
+    return referenced_be_prediction
+'''
+
+# Energy referencing of a single prediction based on polynomial fitting of experimental data
+def reference_be_prediction(be_prediction: tuple, regression_coefficients: list):
+    # Unpack the tuple
+    prediction, std_dev = be_prediction
+    
+    # Initialize the referenced prediction with the original prediction value
+    referenced_prediction = 0.0
+    
+    # Apply the polynomial correction
+    for i, coeff in enumerate(regression_coefficients):
+        referenced_prediction += coeff * (prediction ** i)
+    
+    # Return the modified tuple with the referenced prediction and original standard deviation
+    return (referenced_prediction, std_dev)
 

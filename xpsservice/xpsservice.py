@@ -44,7 +44,6 @@ selected_transition_map = transition_map
 #Initial loading
 #load_soap_configs_and_models(selected_transition_map)
 
-
 app = FastAPI(
     title="EPFL-ISIC-XRDSAP: XPS webservice",
     description="Offers XPS binding energy prediction tool, based on simulation, and a Gaussian process ML model. Allowed elements/orbitals to be predicted are `C1s` and `O1s`. Hydrogens are taken into account but not predicted. Allowed methods for molecular geometry optimization are `GFNFF`, `GFN2xTB`, `GFN1xTB`",
@@ -52,12 +51,6 @@ app = FastAPI(
     contact={"name": "Cheminfo", "email": "admin@cheminfo.org",},
     license_info={"name": "MIT"},
 )
-
-
-#ping
-@app.get("/ping")
-def ping():
-    return {"message": "pongping"}
 
 
 #load models and descriptors
@@ -104,6 +97,7 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     molfile = request.molFile
     method = request.method
     fmax = request.fmax
+    energy_reference = request.energyReference
     
     # Perform conversions to molfile based on the provided input
     if smiles and not molfile:
@@ -119,7 +113,7 @@ def predict_binding_energies_endpoint(request: XPSRequest):
     print("converted format")
     # Perform calculations
     try:
-        predictions = calculate_from_molfile(molfile, method, fmax, selected_transition_map)
+        predictions = calculate_from_molfile(molfile, method, fmax, energy_reference, selected_transition_map)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
